@@ -17,7 +17,7 @@ packages/database  PostgreSQL migration runner and SQL migrations
 1. Install Node.js 20+ and PostgreSQL 15+.
 2. Copy `.env.example` to `.env` and provide local secrets.
 3. Run `npm install`.
-4. Create the database and run `npm run migrate --workspace=@eyeagle/crm-database`.
+4. Create the database and run `npm run migrate --workspace=@eyeagle/crm-database`. The API and migration commands load the root `.env` automatically in local development.
 5. Start the API with `npm run dev:api`, the worker with `npm run dev:worker`, and the web app with `npm run dev:web`.
 
 The frontend contains a representative pilot dataset so the complete workflow can be reviewed before staging is connected. Set the API URL in the Vercel environment before production use.
