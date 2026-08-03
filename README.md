@@ -40,4 +40,4 @@ Run migrations as a release step before deploying the API. Never run the worker 
 - Enable database backups, log drains, uptime checks, and failed-reminder alerts.
 - Run `npm test`, `npm run typecheck`, and `npm run build` in CI.
 
-See [backend-curl-guide.md](docs/backend-curl-guide.md) for copy-paste backend requests, plus [architecture.md](docs/architecture.md), [api-contract.md](docs/api-contract.md), and [pilot-runbook.md](docs/pilot-runbook.md).
+See [spring-boot-backend-plan.md](docs/spring-boot-backend-plan.md) for the Kotlin/Spring Boot implementation plan, [backend-curl-guide.md](docs/backend-curl-guide.md) for copy-paste backend requests, plus [architecture.md](docs/architecture.md), [api-contract.md](docs/api-contract.md), and [pilot-runbook.md](docs/pilot-runbook.md).
