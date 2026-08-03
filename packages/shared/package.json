@@ -1,0 +1,10 @@
+{
+  "name": "@eyeagle/crm-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "tsx --test src/*.test.ts", "typecheck": "tsc --noEmit" },
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "zod": "^3.24.2" },
+  "devDependencies": { "@types/node": "^22.10.7", "tsx": "^4.19.2", "typescript": "^5.7.3" }
+}
