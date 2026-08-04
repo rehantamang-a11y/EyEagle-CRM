@@ -31,32 +31,13 @@ The frontend contains a representative pilot dataset so the complete workflow ca
 
 Run migrations as a release step before deploying the API. Never run the worker against a database whose migration release is behind the worker release.
 
-Build `@eyeagle/crm-shared` before the API, worker or web app: they import it from
-`dist`, and on Node 20 an unbuilt package fails to resolve at runtime.
-
 ## Production gates
 
-Enforced at boot — the API refuses to start otherwise:
-
-- `ALLOW_DEMO_AUTH` must be false when `NODE_ENV=production`. Demo auth accepts any
-  password for any `@eyeagle.in` address and grants admin by email prefix.
-- `SESSION_SECRET` and `SESSION_ENCRYPTION_KEY` must each be 32+ characters.
-- `WEB_ORIGIN` must list at least one origin; it is both the CORS allowlist and the
-  CSRF Origin allowlist.
-- `WEBSITE_INTAKE_SECRET` and `EYEAGLE_AUTH_BASE_URL` must be set.
-
-Still manual:
-
-- Complete the real verification/refresh contract against the Eyeagle identity service.
-- Set `COOKIE_SAMESITE=none` and `COOKIE_SECURE=true` if the web app is on a
-  different host than the API, or proxy the API under the web app's own domain.
+- Replace demo authentication by setting `ALLOW_DEMO_AUTH=false` and complete the real verification/refresh contract.
+- Configure a 32+ character session secret and encryption key in the secret manager.
+- Verify the website webhook signature with the exact raw request body at the edge/proxy.
 - Configure the existing Eyeagle transactional email adapter.
 - Enable database backups, log drains, uptime checks, and failed-reminder alerts.
-  Point health checks at `/api/v1/ready`, not `/api/v1/health`.
-- Agree a retention and erasure policy: `audit_events` is immutable by trigger, so
-  the erasure path has to be designed rather than improvised.
-
-CI runs tests, typecheck, per-workspace builds, migrations against PostgreSQL 15,
-and `npm audit`.
+- Run `npm test`, `npm run typecheck`, and `npm run build` in CI.
 
 See [architecture.md](docs/architecture.md), [api-contract.md](docs/api-contract.md), and [pilot-runbook.md](docs/pilot-runbook.md).

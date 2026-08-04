@@ -1,5 +1,4 @@
-import { leadPriorities } from "@eyeagle/crm-shared";
-import type { NormalizedEnquiry } from "./enquiries.js";
+import type { leadPriorities } from "@eyeagle/crm-shared";
 
 export type JotformAnswer = {
   name?: string;
@@ -16,27 +15,14 @@ export type JotformSubmission = {
   answers: Record<string, JotformAnswer>;
 };
 
-export type MappedJotformEnquiry = {
-  submissionId: string;
-  createdAt: string;
-  enquiry: NormalizedEnquiry;
-  /** Expected questions that could not be matched on this submission, e.g. after a form edit. */
-  unmapped: string[];
-};
-
-/** The original submission, broken into fields, for display rather than lead creation. */
-export type JotformFormContext = {
-  submissionId: string;
-  submittedAt: string;
-  consideringFor?: string;
-  mainConcern?: string;
+export type MappedJotformSubmission = {
+  fullName: string;
+  phone: string;
+  city?: string;
+  summary: string;
+  priority: typeof leadPriorities[number];
   immediateConcern: boolean;
-  immediateConcernRaw?: string;
-  description?: string;
-  location?: string;
-  interestedIn?: string;
-  preferredDay?: string;
-  preferredTiming?: string;
+  /** Expected questions that could not be matched, e.g. after the form was edited. Never blocks creation. */
   unmapped: string[];
 };
 
@@ -61,20 +47,17 @@ function answerText(answer: JotformAnswer): string {
     }
     if (typeof value.full === "string" && value.full) return value.full;
     if (typeof value.phone === "string") return [value.area, value.phone].filter(Boolean).join("");
-    if (typeof value.addr_line1 === "string") {
-      return [value.addr_line1, value.addr_line2, value.city, value.state].filter(Boolean).join(", ");
-    }
   }
   return String(raw);
 }
 
 /**
  * Matched by question label rather than Jotform's internal field name/qid,
- * because the label is what a human confirmed when the form was built and is
- * far more stable to reason about without live API access. Each matcher is a
- * set of substrings that must ALL appear in the normalized label, checked in
- * order so a more specific matcher (e.g. "main" + "concern") is tried before a
- * more general one that could also match a different question.
+ * since the label is what a human confirmed when the form was built. Each
+ * matcher requires ALL its tokens in the normalized label; more specific
+ * matchers (e.g. "main" + "concern") are tried before ones that could collide
+ * with a different question ("Your Name" vs "Site name or location" both
+ * contain "name").
  */
 const FIELD_MATCHERS: Array<{ key: string; include: string[]; exclude?: string[] }> = [
   { key: "fullName", include: ["name"], exclude: ["site", "location"] },
@@ -87,7 +70,7 @@ const FIELD_MATCHERS: Array<{ key: string; include: string[]; exclude?: string[]
   { key: "mainConcern", include: ["main", "concern"] },
   { key: "description", include: ["describe"] },
   { key: "description", include: ["brief"] },
-  { key: "nextStep", include: ["next"] },
+  { key: "interestedIn", include: ["next"] },
   { key: "preferredDay", include: ["preferred"] },
   { key: "timing", include: ["timing"] },
 ];
@@ -107,18 +90,9 @@ function matchFields(answers: JotformAnswer[]): { fields: Map<string, string>; u
     if (hit && hit.value) fields.set(matcher.key, hit.value);
   }
 
-  const requiredForSummary = ["whoFor", "mainConcern", "immediateConcern", "nextStep"];
-  const unmapped = requiredForSummary.filter((key) => !fields.has(key));
+  const expected = ["whoFor", "mainConcern", "immediateConcern", "interestedIn"];
+  const unmapped = expected.filter((key) => !fields.has(key));
   return { fields, unmapped };
-}
-
-/**
- * "Any immediate safety concern?" is the operational urgency signal this form
- * captures, so it drives queue priority. Everything else defaults to normal;
- * there is no signal on this form for "high" or "low".
- */
-function priorityFromImmediateConcern(value: string | undefined): typeof leadPriorities[number] {
-  return value?.trim().toLowerCase() === "yes" ? "urgent" : "normal";
 }
 
 function buildSummary(fields: Map<string, string>): string {
@@ -127,23 +101,28 @@ function buildSummary(fields: Map<string, string>): string {
   if (fields.has("mainConcern")) parts.push(`Main concern: ${fields.get("mainConcern")}.`);
   if (fields.has("immediateConcern")) parts.push(`Immediate concern: ${fields.get("immediateConcern")}.`);
   if (fields.has("description")) parts.push(fields.get("description") as string);
-  if (fields.has("nextStep")) parts.push(`Wants: ${fields.get("nextStep")}.`);
+  // "Interested in" is expressed interest, not a commitment — worded as such per
+  // system-guide.md so it never reads as a promise a scheduled assessment exists.
+  if (fields.has("interestedIn")) parts.push(`Interested in: ${fields.get("interestedIn")}.`);
 
-  // The schema has no structured place for a free-text contact preference — the
-  // website intake's own preferredContactTime field has the same gap — so this
-  // is folded into the summary, the one place an operator will actually see it.
+  // A preferred callback day/time is guidance from the form, never a task or
+  // appointment — it is folded into the summary as context only, and nothing
+  // in this module writes it to next_activity_at or creates any activity.
   const preferredDayAndTime = [fields.get("preferredDay"), fields.get("timing")].filter(Boolean).join(", ");
-  if (preferredDayAndTime) parts.push(`Preferred contact time: ${preferredDayAndTime}.`);
+  if (preferredDayAndTime) parts.push(`Preferred callback: ${preferredDayAndTime}.`);
 
   return parts.length ? parts.join(" ") : "Jotform enquiry — see submission for details.";
 }
 
 /**
- * Pure and network-free so it can be unit tested against a fixture without a
- * live Jotform account. Returns null (rather than throwing) when a required
- * field is missing, so one malformed submission does not abort an entire sync.
+ * Pure and network-free so it can be unit tested without a live Jotform
+ * account. Returns null when name or phone is missing so the submission can be
+ * held for admin review instead of silently guessing at a customer identity.
+ * "Immediate concern" only ever raises priority — it never creates a task,
+ * appointment, or any other side effect; Eyeagle is not an emergency-response
+ * service and this module makes no attempt to behave like one.
  */
-export function mapJotformSubmission(submission: JotformSubmission): MappedJotformEnquiry | null {
+export function mapJotformSubmission(submission: JotformSubmission): MappedJotformSubmission | null {
   const answers = Object.values(submission.answers ?? {});
   const { fields, unmapped } = matchFields(answers);
 
@@ -151,40 +130,15 @@ export function mapJotformSubmission(submission: JotformSubmission): MappedJotfo
   const phone = fields.get("phone");
   if (!fullName || !phone) return null;
 
-  const enquiry: NormalizedEnquiry = {
+  const immediateConcern = fields.get("immediateConcern")?.trim().toLowerCase() === "yes";
+
+  return {
     fullName,
     phone,
     city: fields.get("location"),
     summary: buildSummary(fields),
-    priority: priorityFromImmediateConcern(fields.get("immediateConcern")),
-  };
-
-  return { submissionId: submission.id, createdAt: submission.created_at, enquiry, unmapped };
-}
-
-/**
- * The display counterpart to mapJotformSubmission: instead of collapsing the
- * submission into enquiry_summary for lead creation, this keeps each answer as
- * its own field so an operator can see exactly what the customer selected,
- * unmodified, rather than a paraphrased sentence.
- */
-export function describeJotformSubmission(submission: JotformSubmission): JotformFormContext {
-  const answers = Object.values(submission.answers ?? {});
-  const { fields, unmapped } = matchFields(answers);
-  const immediateConcernRaw = fields.get("immediateConcern");
-
-  return {
-    submissionId: submission.id,
-    submittedAt: submission.created_at,
-    consideringFor: fields.get("whoFor"),
-    mainConcern: fields.get("mainConcern"),
-    immediateConcern: immediateConcernRaw?.trim().toLowerCase() === "yes",
-    immediateConcernRaw,
-    description: fields.get("description"),
-    location: fields.get("location"),
-    interestedIn: fields.get("nextStep"),
-    preferredDay: fields.get("preferredDay"),
-    preferredTiming: fields.get("timing"),
+    priority: immediateConcern ? "urgent" : "normal",
+    immediateConcern,
     unmapped,
   };
 }
@@ -192,10 +146,10 @@ export function describeJotformSubmission(submission: JotformSubmission): Jotfor
 export type JotformFetchOptions = { apiKey: string; formId: string; maxPages?: number; pageSize?: number };
 
 /**
- * A manual "sync now" trigger, not a poller, so simplicity beats efficiency:
- * page through submissions and let the caller filter against what has already
- * been synced. Correctness comes from the idempotency table on the submission
- * id, not from this pagination being perfectly incremental.
+ * Backs the "Refresh Jotform" action — a manual pull, not a poller. Simplicity
+ * beats efficiency here: page through everything up to the cap and let the
+ * caller dedupe against jotform_submissions.jotform_submission_id, so
+ * correctness never depends on this pagination being perfectly incremental.
  */
 export async function fetchJotformSubmissions(options: JotformFetchOptions): Promise<JotformSubmission[]> {
   const pageSize = options.pageSize ?? 100;

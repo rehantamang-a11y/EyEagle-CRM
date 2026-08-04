@@ -3,20 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "test": "tsx --test src/*.test.ts",
-    "typecheck": "tsc --noEmit"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
+  "scripts": { "test": "tsx --test src/*.test.ts", "typecheck": "tsc --noEmit" },
+  "exports": { ".": "./src/index.ts" },
   "dependencies": { "zod": "^3.24.2" },
   "devDependencies": { "@types/node": "^22.10.7", "tsx": "^4.19.2", "typescript": "^5.7.3" }
 }

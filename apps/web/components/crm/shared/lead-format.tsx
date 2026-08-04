@@ -28,14 +28,3 @@ export const age = (iso: string) => {
 };
 
 export const minutesUntil = (iso: string) => Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60_000));
-
-// Most of this team's contact happens from a phone during home visits and audits,
-// so dialling and WhatsApp need to be one tap rather than copy-paste.
-const digitsOnly = (phone: string) => phone.replace(/\D/g, "");
-
-export const telHref = (phone: string) => `tel:+${digitsOnly(phone)}`;
-
-export const whatsappHref = (phone: string, message?: string) => {
-  const base = `https://wa.me/${digitsOnly(phone)}`;
-  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
-};

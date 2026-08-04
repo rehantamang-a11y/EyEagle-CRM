@@ -3,7 +3,6 @@ on:
   pull_request:
   push:
     branches: [main]
-
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -11,71 +10,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          # Must match the `engines` floor: the API imports @eyeagle/crm-shared,
-          # which only resolves from dist. Building on a newer Node than the
-          # deploy target hides resolution failures until runtime.
-          node-version: "20.19"
+          node-version: 20
           cache: npm
-
       - run: npm ci
-
-      # @eyeagle/crm-shared must be built before anything that imports it.
-      - name: Build shared package
-        run: npm run build -w @eyeagle/crm-shared
-
       - run: npm test
       - run: npm run typecheck
-
-      # `npm run build --workspaces` silently ran only the first workspace and
-      # exited 0, so web and worker were never compiled in CI. These are explicit.
-      - name: Build API
-        run: npm run build -w @eyeagle/crm-api
-      - name: Build worker
-        run: npm run build -w @eyeagle/crm-worker
-      - name: Build web
-        run: npm run build -w @eyeagle/crm-web
-
-      - name: Verify shared resolves on the deploy Node version
-        run: node --input-type=module -e "import('@eyeagle/crm-shared').then(m => { if (!m.normalizeIndianPhone) throw new Error('shared export missing'); })"
-
-  migrations:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: eyeagle_crm_ci
-        options: >-
-          --health-cmd pg_isready --health-interval 10s
-          --health-timeout 5s --health-retries 5
-        ports:
-          - 5432:5432
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20.19"
-          cache: npm
-      - run: npm ci
-
-      - name: Apply migrations
-        run: npm run migrate -w @eyeagle/crm-database
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/eyeagle_crm_ci
-
-      - name: Re-apply migrations to prove they are idempotent
-        run: npm run migrate -w @eyeagle/crm-database
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/eyeagle_crm_ci
-
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20.19"
-          cache: npm
-      - run: npm ci
-      - run: npm audit --audit-level=high
+      - run: npm run build

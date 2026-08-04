@@ -8,11 +8,11 @@
     "dev:web": "npm run dev --workspace=@eyeagle/crm-web",
     "dev:api": "npm run dev --workspace=@eyeagle/crm-api",
     "dev:worker": "npm run dev --workspace=@eyeagle/crm-worker",
-    "build": "npm run build -w @eyeagle/crm-shared && npm run build -w @eyeagle/crm-api && npm run build -w @eyeagle/crm-worker && npm run build -w @eyeagle/crm-web",
+    "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
-  "engines": { "node": ">=20.19" },
+  "engines": { "node": ">=20.9" },
   "overrides": {
     "next": {
       "postcss": "8.5.25",
