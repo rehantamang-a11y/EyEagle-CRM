@@ -1,4 +1,4 @@
-# Eyeagle CRM
+## Current first-live-version scope
 
 Standalone, list-first sales workspace for the Eyeagle team. It manually imports allowlisted Jotform enquiries, guides sales through calls/audits/purchase follow-ups, and creates a pending order handoff after a sale without claiming Shopify payment is confirmed.
 
@@ -52,3 +52,6 @@ Run migrations as a release step before deploying the API. Never run the worker 
 - Run `npm test`, `npm run typecheck`, and `npm run build` in CI.
 
 See [crm-backend-scope.md](docs/crm-backend-scope.md) for the CRM-only backend scope, [spring-boot-backend-plan.md](docs/spring-boot-backend-plan.md) for Kotlin/Spring Boot implementation detail, [backend-curl-guide.md](docs/backend-curl-guide.md) for copy-paste backend requests, plus [architecture.md](docs/architecture.md), [api-contract.md](docs/api-contract.md), and [pilot-runbook.md](docs/pilot-runbook.md).
+# Eyeagle CRM
+
+The current first-live-version scope is documented in [docs/minimal-crm-v1.md](docs/minimal-crm-v1.md). It is a focused Jotform intake and follow-up desk, built to reuse existing Eyeagle authentication and database infrastructure.

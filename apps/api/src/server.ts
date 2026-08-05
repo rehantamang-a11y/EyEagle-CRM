@@ -11,6 +11,7 @@ import { z } from "zod";
 import { pool, query, transaction } from "./db.js";
 import { encryptSecret, validWebhookSignature } from "./security.js";
 import { registerWorkflowRoutes } from "./workflow-routes.js";
+import { registerMinimalCrmRoutes } from "./minimal-crm-routes.js";
 
 type Actor = { id: string; externalUserId: string; name: string; email: string; role: "team_member" | "admin" };
 declare module "fastify" { interface FastifyRequest { actor?: Actor } }
@@ -103,6 +104,7 @@ app.get("/api/v1/leads", async (request, reply) => {
 });
 
 registerWorkflowRoutes(app);
+registerMinimalCrmRoutes(app);
 
 app.post("/api/v1/leads", async (request, reply) => {
   const actor = requireActor(request, reply); if (!actor) return;
