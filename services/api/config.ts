@@ -1,3 +1,5 @@
+import { withBasePath } from "@/lib/app-path";
+
 const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 const isLocalEnvironment = process.env.NEXT_PUBLIC_APP_ENV === "local";
 
@@ -6,5 +8,5 @@ if (!isLocalEnvironment && !configuredBaseUrl) {
 }
 
 export const API_BASE_URL = isLocalEnvironment
-  ? "/api/backend"
+  ? withBasePath("/api/backend")
   : configuredBaseUrl!.replace(/\/+$/, "");

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardList, FileText, Inbox, Users } from "lucide-react";
 import { SessionSummary } from "@/components/auth/session-summary";
+import { withBasePath } from "@/lib/app-path";
 
 const links = [
   { href: "/new-enquiries", label: "New enquiries", icon: Inbox },
@@ -16,7 +17,7 @@ export function CrmSidebar() {
 
   return <aside className="desk-sidebar">
     <div className="sidebar-brand">
-      <span><img src="/logo.svg" alt="Eyeagle" /></span>
+      <span><img src={withBasePath("/logo.svg")} alt="Eyeagle" /></span>
       <div><strong>Eyeagle</strong><small>Sales desk</small></div>
     </div>
     <div className="sidebar-heading"><span>Work</span><small>Keep the next promise visible.</small></div>

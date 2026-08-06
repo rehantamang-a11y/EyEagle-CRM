@@ -25,8 +25,8 @@ test("login fetches the authoritative user with the returned access token", asyn
     assert.equal(session.accessToken, "access-1");
     assert.equal(session.refreshToken, "refresh-1");
     assert.deepEqual(calls, [
-      { url: "/api/backend/crm/auth/login", authorization: null },
-      { url: "/api/backend/crm/auth/me", authorization: "Bearer access-1" },
+      { url: "/sales/api/backend/crm/auth/login", authorization: null },
+      { url: "/sales/api/backend/crm/auth/me", authorization: "Bearer access-1" },
     ]);
   } finally {
     globalThis.fetch = originalFetch;
@@ -59,9 +59,9 @@ test("a 403 from me rotates both tokens and retries me once", async () => {
     assert.equal(verified.accessToken, "access-new");
     assert.equal(verified.refreshToken, "refresh-new");
     assert.deepEqual(calls, [
-      { url: "/api/backend/crm/auth/me", authorization: "Bearer access-old" },
-      { url: "/api/backend/crm/auth/refresh-token", authorization: "Bearer refresh-old" },
-      { url: "/api/backend/crm/auth/me", authorization: "Bearer access-new" },
+      { url: "/sales/api/backend/crm/auth/me", authorization: "Bearer access-old" },
+      { url: "/sales/api/backend/crm/auth/refresh-token", authorization: "Bearer refresh-old" },
+      { url: "/sales/api/backend/crm/auth/me", authorization: "Bearer access-new" },
     ]);
   } finally {
     globalThis.fetch = originalFetch;

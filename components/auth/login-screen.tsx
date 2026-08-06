@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { useLogin } from "@/hooks/auth/use-login";
 import { ApiError } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { withBasePath } from "@/lib/app-path";
 
 export function LoginScreen() {
   const [email, setEmail] = React.useState("");
@@ -30,7 +31,7 @@ export function LoginScreen() {
     <div className="w-full max-w-[420px]">
       <div className="mb-5 flex items-center justify-center gap-3">
         <span className="grid size-10 place-items-center rounded-[7px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--app-panel-shadow)]">
-          <img className="size-8" src="/logo.svg" alt="" />
+          <img className="size-8" src={withBasePath("/logo.svg")} alt="" />
         </span>
         <div>
           <strong className="block text-sm text-[var(--text)]">Eyeagle</strong>
@@ -42,7 +43,6 @@ export function LoginScreen() {
         <CardHeader>
           <div className="mb-3 grid size-9 place-items-center rounded-md bg-[var(--brand-soft)] text-[var(--brand)]" aria-hidden="true"><LockKeyhole size={17} /></div>
           <CardTitle>Sign in to the sales desk</CardTitle>
-          <CardDescription>Use your Eyeagle CRM account to manage enquiries and follow-ups.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
@@ -68,10 +68,6 @@ export function LoginScreen() {
             </Button>
           </form>
 
-          <div className="mt-5 flex items-start gap-2 border-t border-[var(--border-subtle)] pt-4 text-[11px] leading-[1.5] text-[var(--faint)]">
-            <ShieldCheck className="mt-0.5 shrink-0 text-[var(--green)]" size={15} aria-hidden="true" />
-            <p className="m-0">Access is limited by your assigned CRM role. Activity remains subject to server-side authorization.</p>
-          </div>
         </CardContent>
       </Card>
 

@@ -15,6 +15,7 @@ import { useTakeOwnership } from "@/hooks/opportunities/use-take-ownership";
 import { useUnclaimedOpportunities } from "@/hooks/opportunities/use-unclaimed-opportunities";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { crmListHref, parseSalesFilter, SALES_FILTERS, type CrmView } from "@/lib/crm-routes";
+import { formatIndianPhone } from "@/lib/format-phone";
 import type { Opportunity, OpportunityActionOutcome } from "@/services/opportunities/opportunities.types";
 
 const titles: Record<CrmView, { title: string; description: string }> = {
@@ -204,7 +205,7 @@ export function CrmPage({ view }: { view: CrmView }) {
             {isNew ? <><span>Customer</span><span>Interested in</span><span>Considering for</span><span>Main concern</span><span>Preferred callback</span><span>Submitted</span><span /></> : <><span>{view === "all-sales" ? "Customer / owner" : "Customer"}</span><span>Sales next action</span><span>Last update</span><span>Status</span><span /></>}
           </div>
           {rows.map((item) => <div className={`queue-row ${isNew ? "intake-grid" : "minimal-grid"}`} key={item.id}>
-            <button className="customer-cell" onClick={() => openDetail(item)}><span className="customer-avatar">{initials(item.fullName)}</span><span><strong>{item.fullName || "Unnamed enquiry"}</strong><small>{item.location || "Location not provided"} · {item.phone || "Phone not provided"}</small>{view === "all-sales" && <em className="owner-inline">Owner · {item.ownerName || "Unknown"}</em>}</span></button>
+            <button className="customer-cell" onClick={() => openDetail(item)}><span className="customer-avatar">{initials(item.fullName)}</span><span><strong>{item.fullName || "Unnamed enquiry"}</strong><small>{item.location || "Location not provided"} · {formatIndianPhone(item.phone)}</small>{view === "all-sales" && <em className="owner-inline">Owner · {item.ownerName || "Unknown"}</em>}</span></button>
             {isNew ? <>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, ["what would you like next"])}</strong></button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, ["considering eyeagle"])}</strong></button>
@@ -223,7 +224,7 @@ export function CrmPage({ view }: { view: CrmView }) {
                   : <Button variant="ghost" size="sm" onClick={() => openDetail(item, "history")}>View history</Button>}</div>
             </>}
           </div>)}
-          {!rows.length && <div className="desk-empty"><CheckCircle2 size={27} /><strong>{urlSearch ? "No matching opportunities" : isNew ? "No new enquiries" : "Nothing here right now"}</strong><span>{urlSearch ? `No results for “${urlSearch}”.` : isNew ? "Refresh Jotform when you are ready." : "The backend returned no opportunities for this filter."}</span></div>}
+          {!rows.length && <div className="desk-empty"><CheckCircle2 size={27} /><strong>{urlSearch ? "No matching opportunities" : isNew ? "No new enquiries" : "Nothing here right now"}</strong>{(urlSearch || isNew) && <span>{urlSearch ? `No results for “${urlSearch}”.` : "Refresh Jotform when you are ready."}</span>}</div>}
         </div>
       </div>
     </section>

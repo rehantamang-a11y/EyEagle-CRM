@@ -25,7 +25,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Local development uses the Next.js same-origin proxy and sends backend traffic to `https://dev02.eyeagle.ai/api/v1`. See [.env.example](.env.example) and [frontend architecture](docs/frontend-architecture.md) for development and production configuration.
+Local development uses the `/sales/api/backend` same-origin Next.js proxy and sends backend traffic to `https://dev02.eyeagle.ai/api/v1`. See [.env.example](.env.example) and [frontend architecture](docs/frontend-architecture.md) for development and production configuration.
 
 ## Validation
 

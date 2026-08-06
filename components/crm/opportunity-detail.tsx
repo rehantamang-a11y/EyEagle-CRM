@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useOpportunityActionHistory } from "@/hooks/opportunities/use-opportunity-action-history";
 import { useOpportunityDetails } from "@/hooks/opportunities/use-opportunity-details";
 import { useTakeOwnership } from "@/hooks/opportunities/use-take-ownership";
+import { formatIndianPhone } from "@/lib/format-phone";
 import type { Opportunity } from "@/services/opportunities/opportunities.types";
 
 const formatDate = (value?: string | null) => value
@@ -55,7 +56,7 @@ function DetailBody({ opportunityId, source }: { opportunityId: string; source: 
   return <>
     <DialogHeader>
       <DialogTitle>{item.fullName || "Unnamed enquiry"}</DialogTitle>
-      <DialogDescription>{item.phone || "Phone not provided"}{item.location ? ` · ${item.location}` : ""}</DialogDescription>
+      <DialogDescription>{formatIndianPhone(item.phone)}{item.location ? ` · ${item.location}` : ""}</DialogDescription>
       <div className="submission-meta"><span>Submitted · {formatDate(item.submittedAt)}</span><span>Jotform</span></div>
     </DialogHeader>
     <div className="detail-content">

@@ -43,6 +43,15 @@ function isAbsoluteUrl(value: string) {
   return /^https?:\/\//i.test(value);
 }
 
+export function resolveApiUrl(path: string) {
+  if (isAbsoluteUrl(path)) return path;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (normalizedPath === API_BASE_URL || normalizedPath.startsWith(`${API_BASE_URL}/`) || normalizedPath.startsWith(`${API_BASE_URL}?`)) {
+    return normalizedPath;
+  }
+  return `${API_BASE_URL}${normalizedPath}`;
+}
+
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { body: requestBody, skipAuthEvent, ...requestInit } = options;
   const headers = new Headers(options.headers);
@@ -50,7 +59,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   if (hasBody && !headers.has("content-type")) headers.set("content-type", "application/json");
   if (accessToken && !headers.has("authorization")) headers.set("authorization", `Bearer ${accessToken}`);
 
-  const response = await fetch(isAbsoluteUrl(path) ? path : `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+  const response = await fetch(resolveApiUrl(path), {
     ...requestInit,
     body: hasBody ? JSON.stringify(requestBody) : undefined,
     credentials: "include",

@@ -82,7 +82,7 @@ test("requests the authenticated unclaimed opportunities endpoint", async () => 
     const result = await opportunitiesService.listUnclaimed();
     assert.equal(result[0]?.id, "872822016364622823");
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities?view=unclaimed",
+      url: "/sales/api/backend/crm/opportunities?view=unclaimed",
       authorization: "Bearer crm-access",
     });
   } finally {
@@ -115,7 +115,7 @@ test("requests the shared sales endpoint with a My Work tab and search", async (
     assert.equal(result[0]?.lastActionAt, "2026-08-05T18:29:45.930649");
     assert.equal(result[0]?.workGroup, "FOLLOW_UPS");
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS&q=Akasmat%20Pradhan",
+      url: "/sales/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS&q=Akasmat%20Pradhan",
       authorization: "Bearer crm-user-access",
     });
   } finally {
@@ -156,10 +156,10 @@ test("passes every sales tab enum to the backend", async () => {
       await opportunitiesService.listSales(filter);
     }
     assert.deepEqual(requests, [
-      "/api/backend/crm/opportunities/all-sales?filter=ALL",
-      "/api/backend/crm/opportunities/all-sales?filter=DUE",
-      "/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS",
-      "/api/backend/crm/opportunities/all-sales?filter=CLOSED",
+      "/sales/api/backend/crm/opportunities/all-sales?filter=ALL",
+      "/sales/api/backend/crm/opportunities/all-sales?filter=DUE",
+      "/sales/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS",
+      "/sales/api/backend/crm/opportunities/all-sales?filter=CLOSED",
     ]);
   } finally {
     globalThis.fetch = originalFetch;
@@ -193,13 +193,13 @@ test("searches the shared sales table across supported fields with exact URI enc
     for (const search of searches.slice(1)) result = await opportunitiesService.listSales("ALL", search);
 
     assert.deepEqual(requests, [
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL", authorization: "Bearer crm-admin-access" },
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Kavita%20Sharma", authorization: "Bearer crm-admin-access" },
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=%2B91%2098111%2022334", authorization: "Bearer crm-admin-access" },
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Gurugram", authorization: "Bearer crm-admin-access" },
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Bathroom%20safety%20assessment", authorization: "Bearer crm-admin-access" },
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Worried%20about%20bathroom%20falls", authorization: "Bearer crm-admin-access" },
-      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Asha%20Mehta", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&q=Kavita%20Sharma", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&q=%2B91%2098111%2022334", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&q=Gurugram", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&q=Bathroom%20safety%20assessment", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&q=Worried%20about%20bathroom%20falls", authorization: "Bearer crm-admin-access" },
+      { url: "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&q=Asha%20Mehta", authorization: "Bearer crm-admin-access" },
     ]);
     assert.equal(result[0]?.id, "872822017073460074");
     assert.equal(result[0]?.fullName, "Kavita Sharma");
@@ -237,7 +237,7 @@ test("fetches and maps one opportunity's authoritative details", async () => {
     assert.equal(result.status, "won");
     assert.equal((result.formContext.formAnswers as Record<string, unknown>)["Brief description of concern"], "Bathroom safety assessment");
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities/872822017073460074",
+      url: "/sales/api/backend/crm/opportunities/872822017073460074",
       authorization: "Bearer crm-access",
     });
   } finally {
@@ -262,7 +262,7 @@ test("posts the authenticated Jotform sync endpoint without a request body", asy
     const result = await opportunitiesService.syncJotform();
     assert.equal(result.imported, 2);
     assert.deepEqual(request, {
-      url: "/api/backend/crm/jotform/sync",
+      url: "/sales/api/backend/crm/jotform/sync",
       method: "POST",
       authorization: "Bearer crm-admin-access",
       body: undefined,
@@ -288,7 +288,7 @@ test("posts the authenticated ownership endpoint with the string opportunity id"
   try {
     await opportunitiesService.takeOwnership("872822016364622823");
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities/872822016364622823/ownership",
+      url: "/sales/api/backend/crm/opportunities/872822016364622823/ownership",
       method: "POST",
       authorization: "Bearer crm-user-access",
       body: undefined,
@@ -326,7 +326,7 @@ test("posts an authenticated opportunity action with the exact backend payload",
       callSummary: "Customer requested a follow-up tomorrow morning.",
     });
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities/872822017073460074/actions",
+      url: "/sales/api/backend/crm/opportunities/872822017073460074/actions",
       method: "POST",
       authorization: "Bearer crm-user-access",
       contentType: "application/json",
@@ -368,7 +368,7 @@ test("fetches and maps opportunity action history", async () => {
       at: "2026-08-05T18:29:45.930649",
     });
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities/872822017073460074/actions",
+      url: "/sales/api/backend/crm/opportunities/872822017073460074/actions",
       authorization: "Bearer crm-user-access",
     });
   } finally {
