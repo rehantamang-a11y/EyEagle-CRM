@@ -1,9 +1,6 @@
-export type CrmHistory = { id: string; type: "imported" | "claimed" | "follow_up" | "sold" | "not_proceeding"; note?: string; lostReason?: string; nextActionAt?: string; at: string };
-export type CrmOpportunity = {
-  id: string; status: "new" | "open" | "won" | "lost"; ownerUserId?: string | null; ownerName?: string | null; fullName: string; phone: string; email?: string | null;
-  location?: string | null; interest?: string | null; summary?: string | null; formContext: Record<string, unknown>; submittedAt: string;
-  nextActionAt?: string | null; nextActionLabel?: string | null; lastActionAt?: string | null; lastNote?: string | null; closedAt?: string | null; lostReason?: string | null; history: CrmHistory[];
-};
+import type { Opportunity } from "@/services/opportunities/opportunities.types";
+
+export type CrmOpportunity = Opportunity;
 
 const now = new Date();
 const ago = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();

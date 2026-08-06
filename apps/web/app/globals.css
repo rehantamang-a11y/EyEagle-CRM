@@ -1,3 +1,22 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-primary: var(--brand);
+  --color-primary-foreground: #ffffff;
+  --color-muted: var(--surface-subtle);
+  --color-muted-foreground: var(--muted);
+  --color-border: var(--border);
+  --color-destructive: var(--red);
+  --radius-sm: 6px;
+  --radius-md: 7px;
+  --radius-lg: var(--radius);
+}
+
 :root {
   /* Shared with the Eyeagle internal portal foundation. */
   --surface-bg: #f6f4f2;

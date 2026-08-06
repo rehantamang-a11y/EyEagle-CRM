@@ -20,11 +20,11 @@ packages/database  PostgreSQL migration runner and SQL migrations
 4. Create the database and run `npm run migrate --workspace=@eyeagle/crm-database`. The API and migration commands load the root `.env` automatically in local development.
 5. Start the API with `npm run dev:api`, the worker with `npm run dev:worker`, and the web app with `npm run dev:web`.
 
-The frontend contains a representative pilot dataset so the complete workflow can be reviewed without credentials. The API and worker require PostgreSQL. Set `NEXT_PUBLIC_CRM_API_URL` before connecting the UI to staging.
+The New enquiries table uses `GET /crm/opportunities?view=unclaimed`; Refresh Jotform uses `POST /crm/jotform/sync` followed by a list refetch; Take ownership uses `POST /crm/opportunities/{id}/ownership` followed by the same refetch. The remaining views and outcome mutations still use the original interactive fixture in `apps/web/lib/minimal-demo-data.ts`. Authentication and API routing are documented in `docs/frontend-architecture.md`.
 
 ## Integration setup
 
-Jotform is deliberately pull-only in V1. Create a read-only key, allowlist one form with `JOTFORM_FORM_ID`, and map stable question IDs in `JOTFORM_FIELD_MAP_JSON`. A sales member triggers `POST /api/v1/integrations/jotform/sync`; repeated refreshes are safe. Invalid, ambiguous, and do-not-contact submissions become `import_issues` for admin review.
+Jotform is deliberately pull-only in V1. “Refresh Jotform” calls `POST /api/v1/crm/jotform/sync` with the current authenticated admin token and then refetches `GET /api/v1/crm/opportunities?view=unclaimed`. The sync response is not used as table data.
 
 For audits, use a dedicated Google Workspace integration account with Calendar-only OAuth access. Put its client secret and refresh token in the deployment secret manager, not source control. `GOOGLE_CALENDAR_ID` is the shared operations calendar. Calendar work is written to the `jobs` outbox transactionally and processed with retries by `apps/worker`.
 
@@ -55,3 +55,9 @@ See [crm-backend-scope.md](docs/crm-backend-scope.md) for the CRM-only backend s
 # Eyeagle CRM
 
 The current first-live-version scope is documented in [docs/minimal-crm-v1.md](docs/minimal-crm-v1.md). It is a focused Jotform intake and follow-up desk, built to reuse existing Eyeagle authentication and database infrastructure.
+
+Frontend work must follow the canonical [Eyeagle CRM design system](docs/design-system.md), which documents the current foundations, components, product patterns, accessibility requirements, and extension rules for humans and AI agents.
+
+API services, TanStack Query hooks, authentication persistence, and RBAC conventions are documented in [frontend-architecture.md](docs/frontend-architecture.md).
+
+The implemented login, `/me`, refresh-token, logout, storage, and protected-mount lifecycle is documented in [authentication.md](docs/authentication.md).
