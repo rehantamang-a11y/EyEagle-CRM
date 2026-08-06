@@ -1,6 +1,0 @@
-{
-  "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "npm run build --workspace=@eyeagle/crm-web",
-  "outputDirectory": "apps/web/.next"
-}
