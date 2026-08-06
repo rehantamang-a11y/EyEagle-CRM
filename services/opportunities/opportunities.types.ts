@@ -82,9 +82,27 @@ export type MyWorkOpportunityDto = {
   action?: string | null;
 };
 
-export type MyWorkOpportunityListEnvelope =
-  | MyWorkOpportunityDto[]
-  | { data?: MyWorkOpportunityDto[] | { content?: MyWorkOpportunityDto[]; items?: MyWorkOpportunityDto[]; opportunities?: MyWorkOpportunityDto[] }; content?: MyWorkOpportunityDto[]; items?: MyWorkOpportunityDto[]; opportunities?: MyWorkOpportunityDto[] };
+export type AllSalesOpportunityDto = MyWorkOpportunityDto & {
+  customerName?: string | null;
+  fullName?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+  location?: string | null;
+  interestedIn?: string | null;
+  interest?: string | null;
+  enquirySummary?: string | null;
+  summary?: string | null;
+  ownerName?: string | null;
+  salesOwner?: string | null;
+  owner?: string | { name?: string | null } | null;
+  submittedAt?: string | null;
+};
+
+export type AllSalesOpportunityListEnvelope =
+  | AllSalesOpportunityDto[]
+  | { data?: AllSalesOpportunityDto[] | { content?: AllSalesOpportunityDto[]; items?: AllSalesOpportunityDto[]; opportunities?: AllSalesOpportunityDto[] }; content?: AllSalesOpportunityDto[]; items?: AllSalesOpportunityDto[]; opportunities?: AllSalesOpportunityDto[] };
+
+export type SalesOpportunityFilter = "ALL" | "DUE" | "FOLLOW_UPS" | "CLOSED";
 
 export type OpportunityActionOutcome = "FOLLOW_UP" | "NOT_PROCEEDING" | "SOLD";
 

@@ -9,7 +9,7 @@ app/          Next.js App Router entry points and global styles
 components/   CRM screens, auth surfaces, providers, and UI primitives
 contexts/     Application-wide auth and RBAC state
 hooks/        TanStack Query hooks grouped by domain
-lib/          Browser persistence, utilities, and temporary UI fixtures
+lib/          Browser persistence and shared utilities
 public/       Static assets
 services/     API client, DTOs, adapters, and endpoint functions
 docs/         Canonical frontend, authentication, and design documentation

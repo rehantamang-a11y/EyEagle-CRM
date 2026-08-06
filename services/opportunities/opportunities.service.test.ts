@@ -91,7 +91,7 @@ test("requests the authenticated unclaimed opportunities endpoint", async () => 
   }
 });
 
-test("requests and maps the authenticated My Work endpoint", async () => {
+test("requests the shared sales endpoint with a My Work tab and search", async () => {
   const originalFetch = globalThis.fetch;
   const { setApiAccessToken } = await import("../api/client");
   const { opportunitiesService } = await servicePromise;
@@ -106,7 +106,7 @@ test("requests and maps the authenticated My Work endpoint", async () => {
   }) as typeof fetch;
 
   try {
-    const result = await opportunitiesService.listMyWork();
+    const result = await opportunitiesService.listSales("FOLLOW_UPS", "Akasmat Pradhan");
     assert.equal(result[0]?.status, "open");
     assert.equal(result[0]?.id, "872822017073460074");
     assert.equal(result[0]?.fullName, "Akasmat Pradhan");
@@ -115,7 +115,7 @@ test("requests and maps the authenticated My Work endpoint", async () => {
     assert.equal(result[0]?.lastActionAt, "2026-08-05T18:29:45.930649");
     assert.equal(result[0]?.workGroup, "FOLLOW_UPS");
     assert.deepEqual(request, {
-      url: "/api/backend/crm/opportunities/my-work",
+      url: "/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS&q=Akasmat%20Pradhan",
       authorization: "Bearer crm-user-access",
     });
   } finally {
@@ -137,6 +137,82 @@ test("groups SOLD My Work records under Closed while retaining the sold outcome"
   });
   assert.equal(mapped.status, "won");
   assert.equal(mapped.workGroup, "CLOSED");
+});
+
+test("passes every sales tab enum to the backend", async () => {
+  const originalFetch = globalThis.fetch;
+  const { opportunitiesService } = await servicePromise;
+  const requests: string[] = [];
+
+  globalThis.fetch = (async (input) => {
+    requests.push(String(input));
+    return new Response('{"status":"success","data":[],"error":null}', {
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+
+  try {
+    for (const filter of ["ALL", "DUE", "FOLLOW_UPS", "CLOSED"] as const) {
+      await opportunitiesService.listSales(filter);
+    }
+    assert.deepEqual(requests, [
+      "/api/backend/crm/opportunities/all-sales?filter=ALL",
+      "/api/backend/crm/opportunities/all-sales?filter=DUE",
+      "/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS",
+      "/api/backend/crm/opportunities/all-sales?filter=CLOSED",
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("searches the shared sales table across supported fields with exact URI encoding", async () => {
+  const originalFetch = globalThis.fetch;
+  const { setApiAccessToken } = await import("../api/client");
+  const { opportunitiesService } = await servicePromise;
+  const requests: Array<{ url: string; authorization: string | null }> = [];
+  const responseBody = '{"status":"success","data":[{"id":872822017073460074,"customer":"Kavita Sharma","phone":"+91 98111 22334","location":"Gurugram","interestedIn":"Bathroom safety assessment","enquirySummary":"Worried about bathroom falls","ownerName":"Asha Mehta","salesNextAction":"Call customer","salesNextActionAt":"2026-08-06T11:00:00","lastUpdate":"2026-08-05T18:29:45","status":"FOLLOW_UP","action":"View"}],"error":null}';
+
+  setApiAccessToken("crm-admin-access");
+  globalThis.fetch = (async (input, init = {}) => {
+    requests.push({ url: String(input), authorization: new Headers(init.headers).get("authorization") });
+    return new Response(responseBody, { headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+
+  try {
+    const searches = [
+      "",
+      "Kavita Sharma",
+      "+91 98111 22334",
+      "Gurugram",
+      "Bathroom safety assessment",
+      "Worried about bathroom falls",
+      "Asha Mehta",
+    ];
+    let result = await opportunitiesService.listSales("ALL", searches[0]);
+    for (const search of searches.slice(1)) result = await opportunitiesService.listSales("ALL", search);
+
+    assert.deepEqual(requests, [
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL", authorization: "Bearer crm-admin-access" },
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Kavita%20Sharma", authorization: "Bearer crm-admin-access" },
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=%2B91%2098111%2022334", authorization: "Bearer crm-admin-access" },
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Gurugram", authorization: "Bearer crm-admin-access" },
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Bathroom%20safety%20assessment", authorization: "Bearer crm-admin-access" },
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Worried%20about%20bathroom%20falls", authorization: "Bearer crm-admin-access" },
+      { url: "/api/backend/crm/opportunities/all-sales?filter=ALL&q=Asha%20Mehta", authorization: "Bearer crm-admin-access" },
+    ]);
+    assert.equal(result[0]?.id, "872822017073460074");
+    assert.equal(result[0]?.fullName, "Kavita Sharma");
+    assert.equal(result[0]?.phone, "+91 98111 22334");
+    assert.equal(result[0]?.location, "Gurugram");
+    assert.equal(result[0]?.interest, "Bathroom safety assessment");
+    assert.equal(result[0]?.summary, "Worried about bathroom falls");
+    assert.equal(result[0]?.ownerName, "Asha Mehta");
+    assert.equal(result[0]?.workGroup, "FOLLOW_UPS");
+  } finally {
+    setApiAccessToken(null);
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("fetches and maps one opportunity's authoritative details", async () => {
@@ -219,35 +295,6 @@ test("posts the authenticated ownership endpoint with the string opportunity id"
     });
   } finally {
     setApiAccessToken(null);
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("never sends restored demo opportunity ids to the backend", async () => {
-  const originalFetch = globalThis.fetch;
-  const { opportunitiesService } = await servicePromise;
-  let fetchCalled = false;
-
-  globalThis.fetch = (async () => {
-    fetchCalled = true;
-    return new Response(null, { status: 204 });
-  }) as typeof fetch;
-
-  try {
-    await assert.rejects(
-      opportunitiesService.takeOwnership("demo-1"),
-      /demo opportunity is read-only/,
-    );
-    await assert.rejects(
-      opportunitiesService.getOpportunity("demo-1"),
-      /demo opportunity is read-only/,
-    );
-    await assert.rejects(
-      opportunitiesService.listActionHistory("demo-1"),
-      /demo opportunity is read-only/,
-    );
-    assert.equal(fetchCalled, false);
-  } finally {
     globalThis.fetch = originalFetch;
   }
 });

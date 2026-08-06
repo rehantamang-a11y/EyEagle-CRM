@@ -12,7 +12,7 @@ export function useTakeOwnership() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.refetchQueries({ queryKey: opportunityKeys.list("unclaimed"), type: "active" }),
-        queryClient.invalidateQueries({ queryKey: opportunityKeys.list("my-work") }),
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.salesLists() }),
       ]);
     },
   });

@@ -17,7 +17,7 @@ export function useSaveOpportunityAction() {
       opportunitiesService.saveAction(opportunityId, action),
     onSuccess: async (_data, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: opportunityKeys.list("my-work") }),
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.salesLists() }),
         queryClient.invalidateQueries({ queryKey: [...opportunityKeys.all, "detail", variables.opportunityId, "actions"] }),
       ]);
     },

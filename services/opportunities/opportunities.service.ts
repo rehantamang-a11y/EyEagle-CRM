@@ -1,5 +1,5 @@
 import { apiRequest } from "@/services/api/client";
-import type { JotformSyncEnvelope, JotformSyncResult, MyWorkOpportunityDto, MyWorkOpportunityListEnvelope, Opportunity, OpportunityActionHistoryDto, OpportunityActionHistoryEnvelope, OpportunityActionRequest, OpportunityDetailEnvelope, OpportunityDto, OpportunityListEnvelope } from "./opportunities.types";
+import type { AllSalesOpportunityDto, AllSalesOpportunityListEnvelope, JotformSyncEnvelope, JotformSyncResult, MyWorkOpportunityDto, Opportunity, OpportunityActionHistoryDto, OpportunityActionHistoryEnvelope, OpportunityActionRequest, OpportunityDetailEnvelope, OpportunityDto, OpportunityListEnvelope, SalesOpportunityFilter } from "./opportunities.types";
 
 type ListEnvelope<T> = T[] | {
   data?: T[] | { content?: T[]; items?: T[]; opportunities?: T[] };
@@ -85,9 +85,7 @@ function normalizeOpportunityId(id: unknown): string {
 }
 
 function backendOpportunityId(opportunityId: string): string {
-  if (!opportunityId || opportunityId.startsWith("demo-")) {
-    throw new Error("This demo opportunity is read-only and cannot be sent to the backend.");
-  }
+  if (!opportunityId) throw new Error("An opportunity ID is required.");
   return encodeURIComponent(opportunityId);
 }
 
@@ -152,6 +150,21 @@ export function mapMyWorkOpportunityDto(item: MyWorkOpportunityDto): Opportunity
   };
 }
 
+export function mapAllSalesOpportunityDto(item: AllSalesOpportunityDto): Opportunity {
+  const mapped = mapMyWorkOpportunityDto(item);
+  const owner = typeof item.owner === "string" ? item.owner : item.owner?.name;
+  return {
+    ...mapped,
+    fullName: item.customer || item.customerName || item.fullName || "Unnamed enquiry",
+    phone: item.phone || item.phoneNumber || "Phone not provided",
+    location: item.location || null,
+    interest: item.interestedIn || item.interest || null,
+    summary: item.enquirySummary || item.summary || null,
+    ownerName: item.ownerName || item.salesOwner || owner || null,
+    submittedAt: item.submittedAt || "",
+  };
+}
+
 function normalizeHistoryType(value?: string | null): Opportunity["history"][number]["type"] {
   const type = (value || "action").toUpperCase();
   if (type === "FOLLOW_UP" || type === "FOLLOW_UPS") return "follow_up";
@@ -179,9 +192,11 @@ export const opportunitiesService = {
     const payload = await apiRequest<OpportunityListEnvelope>("/crm/opportunities?view=unclaimed");
     return normalizeOpportunityList(payload).map(mapOpportunityDto);
   },
-  async listMyWork() {
-    const payload = await apiRequest<MyWorkOpportunityListEnvelope>("/crm/opportunities/my-work");
-    return normalizeList(payload).map(mapMyWorkOpportunityDto);
+  async listSales(filter: SalesOpportunityFilter = "ALL", search = "") {
+    const query = search.trim();
+    const path = `/crm/opportunities/all-sales?filter=${filter}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
+    const payload = await apiRequest<AllSalesOpportunityListEnvelope>(path);
+    return normalizeList(payload).map(mapAllSalesOpportunityDto);
   },
   async getOpportunity(opportunityId: string) {
     const payload = await apiRequest<OpportunityDetailEnvelope>(
