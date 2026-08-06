@@ -1,3 +1,5 @@
-import { ProtectedApp } from "@/components/auth/protected-app";
-import { CRMApp } from "@/components/crm-app";
-export default function Page() { return <ProtectedApp><CRMApp /></ProtectedApp>; }
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/new-enquiries");
+}
