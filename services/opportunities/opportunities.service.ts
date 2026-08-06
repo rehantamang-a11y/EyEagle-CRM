@@ -1,5 +1,6 @@
 import { apiRequest } from "@/services/api/client";
-import type { AllSalesOpportunityDto, AllSalesOpportunityListEnvelope, JotformSyncEnvelope, JotformSyncResult, MyWorkOpportunityDto, Opportunity, OpportunityActionHistoryDto, OpportunityActionHistoryEnvelope, OpportunityActionRequest, OpportunityDetailEnvelope, OpportunityDto, OpportunityListEnvelope, SalesOpportunityFilter } from "./opportunities.types";
+import type { AllSalesOpportunityDto, AllSalesOpportunityListEnvelope, JotformSyncEnvelope, JotformSyncResult, MyWorkOpportunityDto, MyWorkOpportunityListEnvelope, Opportunity, OpportunityActionHistoryDto, OpportunityActionHistoryEnvelope, OpportunityActionRequest, OpportunityDetailEnvelope, OpportunityDto, OpportunityListEnvelope, SalesOpportunityFilter } from "./opportunities.types";
+import { getAnsweredFormValue, mapOpportunityFormAnswers, mapOpportunityListFormAnswers } from "./opportunity-form";
 
 type ListEnvelope<T> = T[] | {
   data?: T[] | { content?: T[]; items?: T[]; opportunities?: T[] };
@@ -38,36 +39,6 @@ function normalizeOpportunityDetail(payload: OpportunityDetailEnvelope): Opportu
   throw new Error("The opportunity details response did not contain an opportunity.");
 }
 
-function normalizeAnswer(value: unknown, prettyFormat?: string): string | string[] | undefined {
-  if (Array.isArray(value)) return value.map(String);
-  if (value && typeof value === "object" && "full" in value) return String((value as { full: unknown }).full);
-  if (value !== undefined && value !== null && value !== "") return String(value);
-  return prettyFormat || undefined;
-}
-
-function normalizeFormAnswers(item: OpportunityDto): Record<string, string | string[]> {
-  const fields = Object.values(item.formContext || {}).sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
-  const answers: Record<string, string | string[]> = {};
-
-  for (const field of fields) {
-    if (!field.text) continue;
-    const value = normalizeAnswer(field.answer, field.prettyFormat);
-    if (value !== undefined) answers[field.text] = value;
-  }
-
-  const suppliedName = item.fullName || item.customerName || item.name;
-  const suppliedPhone = item.phone || item.phoneNumber;
-  if (!answers["Your Name"] && suppliedName) answers["Your Name"] = suppliedName;
-  if (!answers["Phone Number / Whatsapp No."] && suppliedPhone) answers["Phone Number / Whatsapp No."] = suppliedPhone;
-  if (!answers["Site name or location"] && item.location) answers["Site name or location"] = item.location;
-  if (!answers["Who are you considering EyEagle for?"] && item.consideringFor) answers["Who are you considering EyEagle for?"] = [item.consideringFor];
-  if (!answers["Any immediate safety concern?"] && item.mainConcern) answers["Any immediate safety concern?"] = item.mainConcern;
-  if (!answers["What would you like next?"] && item.interestedIn) answers["What would you like next?"] = item.interestedIn;
-  if (!answers["Preferred time to contact"] && item.preferredCallbackTime) answers["Preferred time to contact"] = item.preferredCallbackTime;
-  if (!answers.Timings && item.preferredCallbackDay) answers.Timings = item.preferredCallbackDay;
-  return answers;
-}
-
 function normalizeStatus(status?: string | null): Opportunity["status"] {
   const value = (status || "OPEN").toUpperCase();
   if (value === "UNCLAIMED" || value === "NEW") return "new";
@@ -90,28 +61,30 @@ function backendOpportunityId(opportunityId: string): string {
 }
 
 export function mapOpportunityDto(item: OpportunityDto): Opportunity {
-  const formAnswers = normalizeFormAnswers(item);
+  const formAnswers = mapOpportunityFormAnswers({
+    ...item,
+    customerName: item.customerName || item.fullName || item.name,
+    phone: item.phone || item.phoneNumber,
+  });
   const status = normalizeStatus(item.status);
-  const formValue = (label: string) => {
-    const value = formAnswers[label];
-    return Array.isArray(value) ? value.join(", ") : value;
-  };
+  const formValue = (label: string) => getAnsweredFormValue(formAnswers, label);
   const fullName = item.fullName || item.customerName || item.name || formValue("Your Name") || "Unnamed enquiry";
   const phone = item.phone || item.phoneNumber || formValue("Phone Number / Whatsapp No.") || "Phone not provided";
 
   return {
     id: normalizeOpportunityId(item.id),
     status,
-    ownerUserId: item.ownerId == null ? null : String(item.ownerId),
-    ownerName: item.ownerName || null,
+    ownerUserId: item.ownerId == null && item.owner?.id == null ? null : String(item.ownerId ?? item.owner?.id),
+    ownerName: item.ownerName || item.owner?.name || null,
     fullName,
     phone,
     email: item.email,
     location: item.location,
     interest: item.interestedIn || formValue("What would you like next?") || null,
-    summary: item.summary || formValue("Brief description of concern") || null,
+    summary: item.summary || item.description || formValue("Brief description of concern") || null,
     formContext: { formAnswers },
     submittedAt: item.submittedAt || "",
+    source: item.source || null,
     nextActionAt: item.nextActionAt,
     nextActionLabel: item.nextActionLabel || (status === "open" && !item.nextActionAt ? "Call customer" : null),
     lastActionAt: item.lastActionAt,
@@ -119,6 +92,22 @@ export function mapOpportunityDto(item: OpportunityDto): Opportunity {
     closedAt: item.closedAt,
     lostReason: item.lostReason,
     history: [],
+  };
+}
+
+export function mapOpportunityListDto(item: OpportunityDto): Opportunity {
+  const mapped = mapOpportunityDto(item);
+  const formAnswers = mapOpportunityListFormAnswers(item);
+  const formValue = (label: string) => getAnsweredFormValue(formAnswers, label);
+
+  return {
+    ...mapped,
+    fullName: formValue("Your Name") || mapped.fullName,
+    phone: formValue("Phone Number / Whatsapp No.") || mapped.phone,
+    location: formValue("Site name or location") || mapped.location,
+    interest: formValue("What would you like next?") || null,
+    summary: formValue("Brief description of concern") || null,
+    formContext: { formAnswers },
   };
 }
 
@@ -132,16 +121,21 @@ function normalizeMyWorkGroup(status?: string | null): Opportunity["workGroup"] 
 export function mapMyWorkOpportunityDto(item: MyWorkOpportunityDto): Opportunity {
   const workGroup = normalizeMyWorkGroup(item.status);
   const backendStatus = (item.status || "").toUpperCase();
+  const owner = typeof item.owner === "string" ? null : item.owner;
+  const formAnswers = mapOpportunityFormAnswers({ ...item, customerName: item.customerName || item.customer });
   return {
     id: normalizeOpportunityId(item.id),
     status: backendStatus === "SOLD" ? "won" : workGroup === "CLOSED" ? "lost" : "open",
-    fullName: item.customer || "Unnamed enquiry",
-    phone: "Phone not provided",
-    location: null,
-    interest: null,
-    summary: null,
-    formContext: { formAnswers: {} },
-    submittedAt: "",
+    ownerUserId: item.ownerId == null && owner?.id == null ? null : String(item.ownerId ?? owner?.id),
+    ownerName: item.ownerName || (typeof item.owner === "string" ? item.owner : item.owner?.name) || null,
+    fullName: String(item.customerName || item.customer || "Unnamed enquiry"),
+    phone: String(item.phone || "Phone not provided"),
+    location: item.location ? String(item.location) : null,
+    interest: item.interestedIn ? String(item.interestedIn) : null,
+    summary: item.description ? String(item.description) : null,
+    formContext: { formAnswers },
+    submittedAt: item.submittedAt ? String(item.submittedAt) : "",
+    source: item.source || null,
     nextActionAt: item.salesNextActionAt,
     nextActionLabel: item.salesNextAction || (workGroup === "DUE" ? "Call customer" : null),
     lastActionAt: item.lastUpdate,
@@ -190,7 +184,11 @@ export function mapOpportunityActionHistoryDto(item: OpportunityActionHistoryDto
 export const opportunitiesService = {
   async listUnclaimed() {
     const payload = await apiRequest<OpportunityListEnvelope>("/crm/opportunities?view=unclaimed");
-    return normalizeOpportunityList(payload).map(mapOpportunityDto);
+    return normalizeOpportunityList(payload).map(mapOpportunityListDto);
+  },
+  async listMyWork() {
+    const payload = await apiRequest<MyWorkOpportunityListEnvelope>("/crm/opportunities/my-work");
+    return normalizeList(payload).map(mapMyWorkOpportunityDto);
   },
   async listSales(filter: SalesOpportunityFilter = "ALL", search = "") {
     const query = search.trim();

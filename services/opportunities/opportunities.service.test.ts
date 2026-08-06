@@ -10,22 +10,20 @@ const opportunity: OpportunityDto = {
   status: "UNCLAIMED",
   ownerId: null,
   fullName: "Mr. Pankaj Malik",
+  customerName: "Mr. Pankaj Malik",
   phone: "(981) 106-8697",
   location: "Sec 62 Noida",
-  interestedIn: null,
+  interestedIn: "Book a bathroom safety assessment",
   consideringFor: "Myself",
-  mainConcern: "Yes",
-  preferredCallbackDay: null,
-  preferredCallbackTime: "Tomorrow",
+  mainSafetyConcern: ["Bathroom slips or falls"],
+  immediateSafetyConcern: "Yes",
+  description: null,
+  preferredDay: "Tomorrow",
+  preferredTiming: "Morning",
+  contactConsent: "Accepted",
+  source: "Jotform",
   summary: null,
   submittedAt: "2026-08-01T11:23:12Z",
-  formContext: {
-    "2": { order: "2", text: "Your Name", type: "control_textbox", answer: "Mr. Pankaj Malik" },
-    "4": { order: "3", text: "Phone Number / Whatsapp No.", type: "control_phone", answer: { full: "(981) 106-8697" } },
-    "22": { order: "6", text: "What is your main safety concern?", type: "control_checkbox", answer: ["Bathroom slips or falls"] },
-    "23": { order: "9", text: "What would you like next?", type: "control_radio", answer: "Book a bathroom safety assessment" },
-    "25": { order: "11", text: "Timings", type: "control_radio", answer: "Morning" },
-  },
 };
 
 test("normalizes direct and data-wrapped opportunity lists", async () => {
@@ -51,11 +49,76 @@ test("maps the supplied backend DTO into the restored table model", async () => 
   assert.equal((mapped.formContext.formAnswers as Record<string, unknown>)["Preferred time to contact"], "Tomorrow");
 });
 
+test("maps opportunity list table values from formContext instead of flat detail keys", async () => {
+  const { mapOpportunityListDto } = await servicePromise;
+  const mapped = mapOpportunityListDto({
+    ...opportunity,
+    customerName: "Incorrect flat name",
+    interestedIn: "Incorrect flat interest",
+    formContext: {
+      "2": { name: "q2_textbox0", text: "Your Name", answer: "shubham meena" },
+      "4": { name: "q4_phone2", text: "Phone Number / Whatsapp No.", answer: { full: "(770) 407-1095" } },
+      "10": { name: "q10_textbox8", text: "Site name or location", answer: "Faridabad" },
+      "11": { name: "q11_radio9", text: "Any immediate safety concern?", answer: "Yes" },
+      "12": { name: "q12_textarea10", text: "Brief description of concern", answer: "Kids using the bathroom." },
+      "14": { name: "q14_widget_TermsAndConditions12", text: "I agree to be contacted about this request.", answer: "Accepted" },
+      "21": { name: "whoAre", text: "Who are you considering EyEagle for?", answer: ["General home safety"] },
+      "22": { name: "whatIs", text: "What is your main safety concern?", answer: ["Not sure, just exploring"] },
+      "23": { name: "whatWould", text: "What would you like next?", answer: "Understand the EyEagle safety kit" },
+      "24": { name: "preferredTime", text: "Preferred time to contact", answer: "This weekend" },
+      "25": { name: "timings", text: "Timings", answer: "Afternoon" },
+    },
+  });
+  const answers = mapped.formContext.formAnswers as Record<string, unknown>;
+
+  assert.equal(mapped.fullName, "shubham meena");
+  assert.equal(mapped.phone, "(770) 407-1095");
+  assert.equal(mapped.location, "Faridabad");
+  assert.equal(mapped.interest, "Understand the EyEagle safety kit");
+  assert.equal(mapped.summary, "Kids using the bathroom.");
+  assert.deepEqual(answers["What is your main safety concern?"], ["Not sure, just exploring"]);
+  assert.equal(answers["Timings"], "Afternoon");
+  assert.equal(answers["I agree to be contacted about this request."], "Accepted");
+});
+
 test("derives missing customer fields from the submitted form without crashing the table", async () => {
   const { mapOpportunityDto } = await servicePromise;
-  const mapped = mapOpportunityDto({ ...opportunity, fullName: undefined, phone: undefined });
+  const mapped = mapOpportunityDto({ ...opportunity, fullName: undefined });
   assert.equal(mapped.fullName, "Mr. Pankaj Malik");
   assert.equal(mapped.phone, "(981) 106-8697");
+});
+
+test("maps named opportunity-detail fields back to their Jotform questions", async () => {
+  const { mapOpportunityDto } = await servicePromise;
+  const mapped = mapOpportunityDto({
+    id: "872822017073460074",
+    customerName: "Akasmat Pradhan",
+    phone: "(856) 406-1724",
+    location: "Khatima / Delhi / Odisha - will confirm location shortly",
+    submittedAt: "2026-05-18T02:24:31",
+    consideringFor: "Senior parent / grandparent living away, Someone recovering from illness or surgery",
+    mainSafetyConcern: "No",
+    immediateSafetyConcern: null,
+    interestedIn: null,
+    preferredDay: null,
+    preferredTiming: "Tomorrow",
+    description: null,
+    owner: { id: "872771631951840242", name: "Akshat S" },
+  });
+  const answers = mapped.formContext.formAnswers as Record<string, unknown>;
+
+  assert.equal(answers["Your Name"], "Akasmat Pradhan");
+  assert.equal(answers["Site name or location"], "Khatima / Delhi / Odisha - will confirm location shortly");
+  assert.equal(answers["Who are you considering EyEagle for?"], "Senior parent / grandparent living away, Someone recovering from illness or surgery");
+  assert.equal(answers["What is your main safety concern?"], "No");
+  assert.equal(answers["Any immediate safety concern?"], "Not answered");
+  assert.equal(answers["Brief description of concern"], "Not answered");
+  assert.equal(answers["What would you like next?"], "Not answered");
+  assert.equal(answers["Preferred time to contact"], "Not answered");
+  assert.equal(answers.Timings, "Tomorrow");
+  assert.equal(answers["I agree to be contacted about this request."], "Not answered");
+  assert.equal(mapped.ownerUserId, "872771631951840242");
+  assert.equal(mapped.ownerName, "Akshat S");
 });
 
 test("rejects an unsafe numeric opportunity id before it can be used in a mutation", async () => {
@@ -91,7 +154,7 @@ test("requests the authenticated unclaimed opportunities endpoint", async () => 
   }
 });
 
-test("requests the shared sales endpoint with a My Work tab and search", async () => {
+test("requests the dedicated My Work endpoint without backend filters or search", async () => {
   const originalFetch = globalThis.fetch;
   const { setApiAccessToken } = await import("../api/client");
   const { opportunitiesService } = await servicePromise;
@@ -106,7 +169,7 @@ test("requests the shared sales endpoint with a My Work tab and search", async (
   }) as typeof fetch;
 
   try {
-    const result = await opportunitiesService.listSales("FOLLOW_UPS", "Akasmat Pradhan");
+    const result = await opportunitiesService.listMyWork();
     assert.equal(result[0]?.status, "open");
     assert.equal(result[0]?.id, "872822017073460074");
     assert.equal(result[0]?.fullName, "Akasmat Pradhan");
@@ -115,7 +178,7 @@ test("requests the shared sales endpoint with a My Work tab and search", async (
     assert.equal(result[0]?.lastActionAt, "2026-08-05T18:29:45.930649");
     assert.equal(result[0]?.workGroup, "FOLLOW_UPS");
     assert.deepEqual(request, {
-      url: "/sales/api/backend/crm/opportunities/all-sales?filter=FOLLOW_UPS&q=Akasmat%20Pradhan",
+      url: "/sales/api/backend/crm/opportunities/my-work",
       authorization: "Bearer crm-user-access",
     });
   } finally {
@@ -134,9 +197,11 @@ test("groups SOLD My Work records under Closed while retaining the sold outcome"
     lastUpdate: "2026-08-05T18:29:58.198522",
     status: "SOLD",
     action: null,
+    mainSafetyConcern: "Bathroom slips or falls",
   });
   assert.equal(mapped.status, "won");
   assert.equal(mapped.workGroup, "CLOSED");
+  assert.equal((mapped.formContext.formAnswers as Record<string, unknown>)["What is your main safety concern?"], "Bathroom slips or falls");
 });
 
 test("passes every sales tab enum to the backend", async () => {
@@ -224,7 +289,7 @@ test("fetches and maps one opportunity's authoritative details", async () => {
   setApiAccessToken("crm-access");
   globalThis.fetch = (async (input, init = {}) => {
     request = { url: String(input), authorization: new Headers(init.headers).get("authorization") };
-    return new Response('{"status":"success","data":{"id":872822017073460074,"status":"SOLD","ownerId":872822017000000001,"fullName":"Akasmat Pradhan","phone":"+91 98100 00000","location":"Noida","submittedAt":"2026-08-01T11:23:12","formContext":{"2":{"order":"2","text":"Your Name","answer":"Akasmat Pradhan"},"12":{"order":"8","text":"Brief description of concern","answer":"Bathroom safety assessment"}}},"error":null}', {
+    return new Response('{"status":"success","data":{"id":872822017073460074,"status":"SOLD","owner":{"id":872822017000000001,"name":"Akshat S"},"customerName":"Akasmat Pradhan","phone":"+91 98100 00000","location":"Noida","description":"Bathroom safety assessment","mainSafetyConcern":"Bathroom slips or falls","immediateSafetyConcern":null,"interestedIn":null,"preferredDay":null,"preferredTiming":null,"contactConsent":null,"submittedAt":"2026-08-01T11:23:12","source":"Jotform"},"error":null}', {
       headers: { "content-type": "application/json" },
     });
   }) as typeof fetch;
@@ -235,6 +300,8 @@ test("fetches and maps one opportunity's authoritative details", async () => {
     assert.equal(result.ownerUserId, "872822017000000001");
     assert.equal(result.fullName, "Akasmat Pradhan");
     assert.equal(result.status, "won");
+    assert.equal(result.ownerName, "Akshat S");
+    assert.equal(result.source, "Jotform");
     assert.equal((result.formContext.formAnswers as Record<string, unknown>)["Brief description of concern"], "Bathroom safety assessment");
     assert.deepEqual(request, {
       url: "/sales/api/backend/crm/opportunities/872822017073460074",

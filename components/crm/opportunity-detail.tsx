@@ -57,7 +57,7 @@ function DetailBody({ opportunityId, source }: { opportunityId: string; source: 
     <DialogHeader>
       <DialogTitle>{item.fullName || "Unnamed enquiry"}</DialogTitle>
       <DialogDescription>{formatIndianPhone(item.phone)}{item.location ? ` · ${item.location}` : ""}</DialogDescription>
-      <div className="submission-meta"><span>Submitted · {formatDate(item.submittedAt)}</span><span>Jotform</span></div>
+      <div className="submission-meta"><span>Submitted · {formatDate(item.submittedAt)}</span><span>{item.source || "Source not provided"}</span></div>
     </DialogHeader>
     <div className="detail-content">
       {isNewEnquiry && item.status === "new"

@@ -2,20 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { opportunitiesService } from "@/services/opportunities/opportunities.service";
-import type { SalesOpportunityFilter } from "@/services/opportunities/opportunities.types";
 import { opportunityKeys } from "./use-unclaimed-opportunities";
 
-export function useSalesOpportunities(
-  filter: SalesOpportunityFilter,
-  search: string,
-  enabled = true,
-) {
+export function useMyWorkOpportunities(enabled = true) {
   return useQuery({
-    queryKey: opportunityKeys.salesList(filter, search),
-    queryFn: () => opportunitiesService.listSales(filter, search),
+    queryKey: opportunityKeys.myWork(),
+    queryFn: opportunitiesService.listMyWork,
     enabled,
     staleTime: 0,
-    gcTime: 0,
     refetchOnMount: "always",
     refetchOnReconnect: "always",
     refetchOnWindowFocus: "always",

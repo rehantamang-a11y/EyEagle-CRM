@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useMyWorkOpportunities } from "@/hooks/opportunities/use-my-work-opportunities";
 import { useSalesOpportunities } from "@/hooks/opportunities/use-sales-opportunities";
 import { useSaveOpportunityAction } from "@/hooks/opportunities/use-save-opportunity-action";
 import { useSyncJotform } from "@/hooks/opportunities/use-sync-jotform";
@@ -78,6 +79,7 @@ export function CrmPage({ view }: { view: CrmView }) {
   const debouncedSearch = useDebouncedValue(searchDraft.trim(), 1_500);
   const isSearchDebouncing = searchDraft.trim() !== urlSearch;
   const isNew = view === "new-enquiries";
+  const isMyWork = view === "my-work";
 
   useEffect(() => {
     if (searchDraft.trim() === urlSearch) return;
@@ -105,23 +107,29 @@ export function CrmPage({ view }: { view: CrmView }) {
   }, [filter, isNew, rawFilter, router, urlSearch, view]);
 
   const unclaimedQuery = useUnclaimedOpportunities(isNew);
+  const myWorkQuery = useMyWorkOpportunities(isMyWork);
   const salesQuery = useSalesOpportunities(
-    view === "my-work" ? "my-work" : "all-sales",
     filter,
     urlSearch,
-    !isNew && !isSearchDebouncing,
+    view === "all-sales" && !isSearchDebouncing,
   );
   const syncJotform = useSyncJotform();
   const takeOwnership = useTakeOwnership();
   const saveOpportunityAction = useSaveOpportunityAction();
-  const activeQuery = isNew ? unclaimedQuery : salesQuery;
-  const sourceRows = isNew ? (unclaimedQuery.data || []) : (salesQuery.data || []);
-  const rows = useMemo(() => isNew
-    ? sourceRows.filter((item) => [item.fullName, item.phone, item.location, item.interest, item.summary]
-      .filter(Boolean).join(" ").toLowerCase().includes(urlSearch.toLowerCase()))
-      .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime())
-    : sourceRows,
-  [isNew, sourceRows, urlSearch]);
+  const activeQuery = isNew ? unclaimedQuery : isMyWork ? myWorkQuery : salesQuery;
+  const sourceRows = isNew ? (unclaimedQuery.data || []) : isMyWork ? (myWorkQuery.data || []) : (salesQuery.data || []);
+  const rows = useMemo(() => {
+    if (isNew) {
+      return sourceRows.filter((item) => [item.fullName, item.phone, item.location, item.interest, item.summary]
+        .filter(Boolean).join(" ").toLowerCase().includes(urlSearch.toLowerCase()))
+        .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+    }
+    if (!isMyWork) return sourceRows;
+    const search = urlSearch.toLowerCase();
+    return sourceRows.filter((item) => (filter === "ALL" || item.workGroup === filter)
+      && [item.fullName, item.nextActionLabel, statusLabel(item)]
+        .filter(Boolean).join(" ").toLowerCase().includes(search));
+  }, [filter, isMyWork, isNew, sourceRows, urlSearch]);
 
   const flash = (message: string) => {
     setToast(message);
@@ -177,7 +185,7 @@ export function CrmPage({ view }: { view: CrmView }) {
     } finally { setBusy(false); }
   };
 
-  const loading = isSearchDebouncing || (!isNew && salesQuery.isFetching) || (isNew && unclaimedQuery.isLoading);
+  const loading = isSearchDebouncing || activeQuery.isFetching;
   const error = activeQuery.isError ? activeQuery.error : null;
   const heading = titles[view];
 

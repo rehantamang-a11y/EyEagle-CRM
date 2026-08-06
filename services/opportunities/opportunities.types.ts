@@ -20,6 +20,7 @@ export type Opportunity = {
   summary?: string | null;
   formContext: Record<string, unknown>;
   submittedAt: string;
+  source?: string | null;
   nextActionAt?: string | null;
   nextActionLabel?: string | null;
   lastActionAt?: string | null;
@@ -30,7 +31,22 @@ export type Opportunity = {
   workGroup?: "DUE" | "FOLLOW_UPS" | "CLOSED";
 };
 
+export type OpportunityFormResponseDto = {
+  customerName?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  consideringFor?: string | string[] | null;
+  mainSafetyConcern?: string | string[] | null;
+  immediateSafetyConcern?: string | null;
+  description?: string | null;
+  interestedIn?: string | null;
+  preferredDay?: string | null;
+  preferredTiming?: string | null;
+  contactConsent?: string | boolean | null;
+};
+
 export type OpportunityFormFieldDto = {
+  name?: string;
   order?: string;
   text?: string;
   type?: string;
@@ -38,24 +54,18 @@ export type OpportunityFormFieldDto = {
   prettyFormat?: string;
 };
 
-export type OpportunityDto = {
+export type OpportunityDto = OpportunityFormResponseDto & {
   id: string;
   status?: string | null;
   ownerId?: string | number | null;
   ownerName?: string | null;
+  owner?: { id?: string | number | null; name?: string | null } | null;
   fullName?: string | null;
   name?: string | null;
-  customerName?: string | null;
-  phone?: string | null;
   phoneNumber?: string | null;
   email?: string | null;
-  location?: string | null;
-  interestedIn?: string | null;
-  consideringFor?: string | null;
-  mainConcern?: string | null;
-  preferredCallbackDay?: string | null;
-  preferredCallbackTime?: string | null;
   summary?: string | null;
+  source?: string | null;
   submittedAt?: string | null;
   nextActionAt?: string | null;
   nextActionLabel?: string | null;
@@ -64,6 +74,7 @@ export type OpportunityDto = {
   closedAt?: string | null;
   lostReason?: string | null;
   formContext?: Record<string, OpportunityFormFieldDto> | null;
+  formData?: Record<string, OpportunityFormFieldDto> | null;
 };
 
 export type OpportunityListEnvelope =
@@ -72,29 +83,33 @@ export type OpportunityListEnvelope =
 
 export type OpportunityDetailEnvelope = OpportunityDto | { data?: OpportunityDto | null };
 
-export type MyWorkOpportunityDto = {
+export type MyWorkOpportunityDto = OpportunityFormResponseDto & {
   id: string;
   customer?: string | null;
+  owner?: string | { id?: string | number | null; name?: string | null } | null;
+  ownerId?: string | number | null;
+  ownerName?: string | null;
   salesNextAction?: string | null;
   salesNextActionAt?: string | null;
   lastUpdate?: string | null;
   status?: string | null;
   action?: string | null;
+  submittedAt?: string | null;
+  source?: string | null;
 };
 
+export type MyWorkOpportunityListEnvelope =
+  | MyWorkOpportunityDto[]
+  | { data?: MyWorkOpportunityDto[] | { content?: MyWorkOpportunityDto[]; items?: MyWorkOpportunityDto[]; opportunities?: MyWorkOpportunityDto[] }; content?: MyWorkOpportunityDto[]; items?: MyWorkOpportunityDto[]; opportunities?: MyWorkOpportunityDto[] };
+
 export type AllSalesOpportunityDto = MyWorkOpportunityDto & {
-  customerName?: string | null;
   fullName?: string | null;
-  phone?: string | null;
   phoneNumber?: string | null;
-  location?: string | null;
-  interestedIn?: string | null;
   interest?: string | null;
   enquirySummary?: string | null;
   summary?: string | null;
   ownerName?: string | null;
   salesOwner?: string | null;
-  owner?: string | { name?: string | null } | null;
   submittedAt?: string | null;
 };
 
