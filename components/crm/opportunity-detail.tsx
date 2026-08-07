@@ -9,16 +9,17 @@ import { useOpportunityActionHistory } from "@/hooks/opportunities/use-opportuni
 import { useOpportunityDetails } from "@/hooks/opportunities/use-opportunity-details";
 import { useTakeOwnership } from "@/hooks/opportunities/use-take-ownership";
 import { formatIndianPhone } from "@/lib/format-phone";
+import { OPPORTUNITY_CONTACT_LABELS } from "@/services/opportunities/opportunity-form";
+import { opportunityStatusLabel } from "@/services/opportunities/opportunity-status";
 import type { Opportunity } from "@/services/opportunities/opportunities.types";
 
 const formatDate = (value?: string | null) => value
   ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value))
   : "—";
-const statusLabel = (item: Opportunity) => item.status === "won" ? "Sold" : item.status === "lost" ? "Not proceeding" : item.workGroup === "FOLLOW_UPS" ? "Follow-up" : item.workGroup === "CLOSED" ? "Closed" : "Call customer";
-const entries = (item: Opportunity) => Object.entries((item.formContext.formAnswers as Record<string, unknown> | undefined) || item.formContext)
-  .filter(([key]) => key !== "formAnswers")
+const statusLabel = (item: Opportunity) => opportunityStatusLabel(item.status);
+const entries = (item: Opportunity) => Object.entries(item.formAnswers)
   .map(([label, value]) => [label, Array.isArray(value) ? value.join(", ") : String(value || "—")] as const);
-const contactLabels = new Set(["Your Name", "Phone Number / Whatsapp No.", "Site name or location"]);
+const contactLabels = new Set<string>(OPPORTUNITY_CONTACT_LABELS);
 
 function DetailBody({ opportunityId, source }: { opportunityId: string; source: string }) {
   const router = useRouter();
@@ -60,9 +61,9 @@ function DetailBody({ opportunityId, source }: { opportunityId: string; source: 
       <div className="submission-meta"><span>Submitted · {formatDate(item.submittedAt)}</span><span>{item.source || "Source not provided"}</span></div>
     </DialogHeader>
     <div className="detail-content">
-      {isNewEnquiry && item.status === "new"
+      {isNewEnquiry
         ? <section className="ownership-section"><div><h3>Ownership</h3><strong>Unclaimed enquiry</strong><p>Take ownership when you are ready to make the first call.</p>{claimError && <p className="text-[var(--red)]">{claimError}</p>}</div><Button onClick={() => void claim(item)} disabled={takeOwnership.isPending}>Take ownership</Button></section>
-        : <section><h3>Sales next action</h3><strong>{item.nextActionLabel || statusLabel(item)}</strong><p>{item.nextActionAt ? formatDate(item.nextActionAt) : item.lastNote || "No further action."}</p></section>}
+        : <section><h3>Sales next action</h3><strong>{item.nextActionLabel || statusLabel(item)}</strong><p>{item.nextActionAt ? formatDate(item.nextActionAt) : "No further action."}</p></section>}
 
       <div className="detail-tabs" role="tablist" aria-label="Enquiry details">
         <button role="tab" aria-selected={tab === "form"} onClick={() => setTab("form")}>Form submission</button>

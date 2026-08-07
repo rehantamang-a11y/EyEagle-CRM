@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { opportunitiesService } from "@/services/opportunities/opportunities.service";
 import type { SalesOpportunityFilter } from "@/services/opportunities/opportunities.types";
-import { opportunityKeys } from "./use-unclaimed-opportunities";
+import { opportunityKeys } from "./opportunity-query-keys";
 
 export function useSalesOpportunities(
   filter: SalesOpportunityFilter,

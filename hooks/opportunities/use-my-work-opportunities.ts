@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { opportunitiesService } from "@/services/opportunities/opportunities.service";
-import { opportunityKeys } from "./use-unclaimed-opportunities";
+import { opportunityKeys } from "./opportunity-query-keys";
 
 export function useMyWorkOpportunities(enabled = true) {
   return useQuery({

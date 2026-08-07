@@ -17,6 +17,9 @@ import { useUnclaimedOpportunities } from "@/hooks/opportunities/use-unclaimed-o
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { crmListHref, parseSalesFilter, SALES_FILTERS, type CrmView } from "@/lib/crm-routes";
 import { formatIndianPhone } from "@/lib/format-phone";
+import { getAnsweredFormValue, type OpportunityFormKey } from "@/services/opportunities/opportunity-form";
+import { sortOpportunitiesLatestFirst } from "@/services/opportunities/opportunity-sort";
+import { isOpportunityClosed, opportunityStatusLabel } from "@/services/opportunities/opportunity-status";
 import type { Opportunity, OpportunityActionOutcome } from "@/services/opportunities/opportunities.types";
 
 const titles: Record<CrmView, { title: string; description: string }> = {
@@ -43,21 +46,9 @@ const formatAge = (value: string) => {
   return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 };
 const initials = (value?: string | null) => (value || "Unnamed enquiry").split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "?";
-const formAnswers = (item: Opportunity) => (item.formContext.formAnswers as Record<string, unknown> | undefined) || {};
-const formValue = (item: Opportunity, terms: string[]) => {
-  const entry = Object.entries(formAnswers(item)).find(([label]) => terms.some((term) => label.toLowerCase().includes(term.toLowerCase())));
-  if (!entry) return "—";
-  return Array.isArray(entry[1]) ? entry[1].join(", ") : String(entry[1] || "—");
-};
+const formValue = (item: Opportunity, key: OpportunityFormKey) => getAnsweredFormValue(item.formAnswers, key) || "—";
 
-function statusLabel(item: Opportunity) {
-  if (item.status === "won") return "Sold";
-  if (item.status === "lost") return "Not proceeding";
-  if (item.workGroup === "DUE") return "Due";
-  if (item.workGroup === "FOLLOW_UPS") return "Follow-up";
-  if (item.workGroup === "CLOSED") return "Closed";
-  return !item.nextActionAt || new Date(item.nextActionAt) <= new Date() ? "Due" : "Open";
-}
+const statusLabel = (item: Opportunity) => opportunityStatusLabel(item.status);
 
 export function CrmPage({ view }: { view: CrmView }) {
   const router = useRouter();
@@ -120,15 +111,14 @@ export function CrmPage({ view }: { view: CrmView }) {
   const sourceRows = isNew ? (unclaimedQuery.data || []) : isMyWork ? (myWorkQuery.data || []) : (salesQuery.data || []);
   const rows = useMemo(() => {
     if (isNew) {
-      return sourceRows.filter((item) => [item.fullName, item.phone, item.location, item.interest, item.summary]
-        .filter(Boolean).join(" ").toLowerCase().includes(urlSearch.toLowerCase()))
-        .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+      return sortOpportunitiesLatestFirst(sourceRows.filter((item) => [item.fullName, item.phone, item.location, item.interest, item.summary]
+        .filter(Boolean).join(" ").toLowerCase().includes(urlSearch.toLowerCase())), "submittedAt");
     }
-    if (!isMyWork) return sourceRows;
+    if (!isMyWork) return sortOpportunitiesLatestFirst(sourceRows, "lastActionAt");
     const search = urlSearch.toLowerCase();
-    return sourceRows.filter((item) => (filter === "ALL" || item.workGroup === filter)
+    return sortOpportunitiesLatestFirst(sourceRows.filter((item) => (filter === "ALL" || item.workGroup === filter)
       && [item.fullName, item.nextActionLabel, statusLabel(item)]
-        .filter(Boolean).join(" ").toLowerCase().includes(search));
+        .filter(Boolean).join(" ").toLowerCase().includes(search)), "lastActionAt");
   }, [filter, isMyWork, isNew, sourceRows, urlSearch]);
 
   const flash = (message: string) => {
@@ -213,21 +203,21 @@ export function CrmPage({ view }: { view: CrmView }) {
             {isNew ? <><span>Customer</span><span>Interested in</span><span>Considering for</span><span>Main concern</span><span>Preferred callback</span><span>Submitted</span><span /></> : <><span>{view === "all-sales" ? "Customer / owner" : "Customer"}</span><span>Sales next action</span><span>Last update</span><span>Status</span><span /></>}
           </div>
           {rows.map((item) => <div className={`queue-row ${isNew ? "intake-grid" : "minimal-grid"}`} key={item.id}>
-            <button className="customer-cell" onClick={() => openDetail(item)}><span className="customer-avatar">{initials(item.fullName)}</span><span><strong>{item.fullName || "Unnamed enquiry"}</strong><small>{item.location || "Location not provided"} · {formatIndianPhone(item.phone)}</small>{view === "all-sales" && <em className="owner-inline">Owner · {item.ownerName || "Unknown"}</em>}</span></button>
+            <button className="customer-cell" onClick={() => openDetail(item)}><span className="customer-avatar">{initials(item.fullName)}</span><span><strong>{item.fullName || "Unnamed enquiry"}</strong>{isNew && <small>{item.location || "Location not provided"} · {formatIndianPhone(item.phone)}</small>}{view === "all-sales" && <em className="owner-inline">Owner · {item.ownerName || "Unknown"}</em>}</span></button>
             {isNew ? <>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, ["what would you like next"])}</strong></button>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, ["considering eyeagle"])}</strong></button>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, ["main safety concern"])}</strong></button>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, ["preferred time to contact"])}</strong><small>{formValue(item, ["timings"])}</small></button>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, "interestedIn")}</strong></button>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, "consideringFor")}</strong></button>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, "safetyConcern")}</strong></button>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, "preferredDay")}</strong><small>{formValue(item, "preferredTiming")}</small></button>
               <span className="minimal-meta">{formatAge(item.submittedAt)}</span>
               <div className="row-action"><Button size="sm" onClick={() => void claim(item)} disabled={busy}>Take ownership</Button></div>
             </> : <>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.nextActionLabel || statusLabel(item)}</strong><small>{item.nextActionAt ? formatDate(item.nextActionAt) : item.lostReason || "Ready now"}</small></button>
-              <span className="minimal-meta">{formatDate(item.lastActionAt || item.closedAt)}</span>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.nextActionLabel || statusLabel(item)}</strong><small>{item.nextActionAt ? formatDate(item.nextActionAt) : "Ready now"}</small></button>
+              <span className="minimal-meta">{formatDate(item.lastActionAt)}</span>
               <span className={`minimal-status ${statusLabel(item).toLowerCase().replace(" ", "-")}`}>{statusLabel(item)}</span>
               <div className="row-action">{view === "all-sales"
                 ? <Button variant="ghost" size="sm" onClick={() => openDetail(item)}>View</Button>
-                : item.status === "open"
+                : !isOpportunityClosed(item.status)
                   ? <Button size="sm" onClick={() => startAction(item)}>Take action</Button>
                   : <Button variant="ghost" size="sm" onClick={() => openDetail(item, "history")}>View history</Button>}</div>
             </>}
