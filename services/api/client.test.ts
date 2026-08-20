@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-process.env.NEXT_PUBLIC_APP_ENV = "local";
-
 test("preserves unsafe JSON integers as exact strings before DTO mapping", async () => {
   const { apiRequest, resolveApiUrl } = await import("./client");
   const originalFetch = globalThis.fetch;

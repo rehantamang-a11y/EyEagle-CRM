@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { JotformOpportunityListDto, OpportunityDetailDto } from "./opportunities.types";
 
-process.env.NEXT_PUBLIC_APP_ENV = "local";
-
 const servicePromise = import("./opportunities.service");
 const opportunity: OpportunityDetailDto = {
   id: "872822016364622823",

@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { AuthSession } from "./auth.types";
 
-process.env.NEXT_PUBLIC_APP_ENV = "local";
-
 const servicePromise = import("./auth.service").then(({ authService }) => authService);
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
