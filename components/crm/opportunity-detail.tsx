@@ -21,7 +21,7 @@ const entries = (item: Opportunity) => Object.entries(item.formAnswers)
   .map(([label, value]) => [label, Array.isArray(value) ? value.join(", ") : String(value || "—")] as const);
 const contactLabels = new Set<string>(OPPORTUNITY_CONTACT_LABELS);
 
-function DetailBody({ opportunityId, source }: { opportunityId: string; source: string }) {
+function DetailBody({ opportunityId, source, modal }: { opportunityId: string; source: string; modal: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const details = useOpportunityDetails(opportunityId, true);
@@ -56,8 +56,15 @@ function DetailBody({ opportunityId, source }: { opportunityId: string; source: 
 
   return <>
     <DialogHeader>
-      <DialogTitle>{item.fullName || "Unnamed enquiry"}</DialogTitle>
-      <DialogDescription>{formatIndianPhone(item.phone)}{item.location ? ` · ${item.location}` : ""}</DialogDescription>
+      {modal
+        ? <>
+            <DialogTitle>{item.fullName || "Unnamed enquiry"}</DialogTitle>
+            <DialogDescription>{formatIndianPhone(item.phone)}{item.location ? ` · ${item.location}` : ""}</DialogDescription>
+          </>
+        : <>
+            <h2 className="ui-dialog-title">{item.fullName || "Unnamed enquiry"}</h2>
+            <p className="ui-dialog-description">{formatIndianPhone(item.phone)}{item.location ? ` · ${item.location}` : ""}</p>
+          </>}
       <div className="submission-meta"><span>Submitted · {formatDate(item.submittedAt)}</span><span>{item.source || "Source not provided"}</span></div>
     </DialogHeader>
     <div className="detail-content">
@@ -83,6 +90,6 @@ function DetailBody({ opportunityId, source }: { opportunityId: string; source: 
 
 export function OpportunityDetail({ opportunityId, source, modal = false }: { opportunityId: string; source: string; modal?: boolean }) {
   const router = useRouter();
-  if (modal) return <Dialog open onOpenChange={(open) => !open && router.back()}><DialogContent className="detail-dialog"><DetailBody opportunityId={opportunityId} source={source} /></DialogContent></Dialog>;
-  return <section className="workspace"><div className="page-heading"><div><h1>Opportunity details</h1><p>Authoritative CRM record and activity</p></div><Button variant="outline" size="sm" onClick={() => router.back()}><ArrowLeft size={14} />Back</Button></div><div className="detail-dialog route-detail"><DetailBody opportunityId={opportunityId} source={source} /></div></section>;
+  if (modal) return <Dialog open onOpenChange={(open) => !open && router.back()}><DialogContent className="detail-dialog"><DetailBody opportunityId={opportunityId} source={source} modal /></DialogContent></Dialog>;
+  return <section className="workspace"><div className="page-heading"><div><h1>Opportunity details</h1><p>Authoritative CRM record and activity</p></div><Button variant="outline" size="sm" onClick={() => router.back()}><ArrowLeft size={14} />Back</Button></div><div className="detail-dialog route-detail"><DetailBody opportunityId={opportunityId} source={source} modal={false} /></div></section>;
 }
