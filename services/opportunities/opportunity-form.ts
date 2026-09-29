@@ -1,4 +1,4 @@
-import type { JotformOpportunityListDto, OpportunityDetailDto, OpportunityQuestionFieldsDto } from "./opportunities.types";
+import type { JotformOpportunityListDto, OpportunityDetailDto, OpportunityFormFieldDto, OpportunityQuestionFieldsDto } from "./opportunities.types";
 
 export const NOT_ANSWERED = "Not answered";
 
@@ -6,7 +6,7 @@ export const OPPORTUNITY_FORM_FIELDS = [
   { key: "customerName", formName: "q2_textbox0", label: "Your Name", section: "contact" },
   { key: "phone", formName: "q4_phone2", label: "Phone Number / Whatsapp No.", section: "contact" },
   { key: "location", formName: "q10_textbox8", label: "Site name or location", section: "contact" },
-  { key: "consideringFor", formName: "whoAre", label: "Who are you considering EyEagle for?", section: "response" },
+  { key: "consideringFor", formName: "whoAre", label: "Who are you considering Eyeagle for?", section: "response" },
   { key: "safetyConcern", formName: "whatIs", label: "What is your main safety concern?", section: "response" },
   { key: "immediateConcern", formName: "q11_radio9", label: "Any immediate safety concern?", section: "response" },
   { key: "description", formName: "q12_textarea10", label: "Brief description of concern", section: "response" },
@@ -39,8 +39,16 @@ function normalizeFormValue(value: unknown): string | string[] {
 export function mapOpportunityDetailFormAnswers(item: OpportunityDetailDto): Record<string, string | string[]> {
   const answers = Object.fromEntries(OPPORTUNITY_FORM_FIELDS.map(({ key, label }) => [label, normalizeFormValue(item[key])]));
   const consentField = OPPORTUNITY_FORM_FIELDS.find(({ key }) => key === "contactConsent");
-  const consentSubmission = item.formSubmission?.find(({ question }) => question?.trim() === consentField?.label);
-  if (consentField) answers[consentField.label] = normalizeFormValue(consentSubmission?.answer);
+  const consentSubmission = item.formSubmission?.find(
+    ({ question }) => question?.trim().toLocaleLowerCase() === consentField?.label.toLocaleLowerCase(),
+  );
+  if (consentField && consentSubmission) answers[consentField.label] = normalizeFormValue(consentSubmission.answer);
+
+  const knownLabels = new Set<string>(OPPORTUNITY_FORM_FIELDS.map(({ label }) => label.toLocaleLowerCase()));
+  for (const submission of item.formSubmission || []) {
+    const question = submission.question?.trim();
+    if (question && !knownLabels.has(question.toLocaleLowerCase())) answers[question] = normalizeFormValue(submission.answer);
+  }
   return answers;
 }
 
@@ -60,18 +68,29 @@ export function mapOpportunityListFormData(item: JotformOpportunityListDto): {
   const formSource = item.formData && Object.keys(item.formData).length ? item.formData : item.formContext;
   const fields = Object.values(formSource || {});
   const validationIssues: string[] = [];
-  const entries = OPPORTUNITY_FORM_FIELDS.map(({ key, formName, label }) => {
-    const exactField = fields.find((candidate) => candidate.name === formName && candidate.text?.trim() === label);
-    const labelField = exactField || fields.find((candidate) => candidate.text?.trim() === label);
-    if (labelField && !exactField) validationIssues.push(`${String(key)} used an unexpected Jotform field name.`);
+  const matchedFields = new Set<OpportunityFormFieldDto>();
+  const entries: Array<[string, string | string[]]> = OPPORTUNITY_FORM_FIELDS.map(({ key, formName, label }) => {
+    const nameField = fields.find((candidate) => candidate.name === formName);
+    const labelField = nameField || fields.find((candidate) => candidate.text?.trim() === label);
+    if (labelField) matchedFields.add(labelField);
+    if (labelField && !nameField) validationIssues.push(`${String(key)} used an unexpected Jotform field name.`);
+    if (nameField && nameField.text?.trim() !== label) {
+      validationIssues.push(`${String(key)} used an unexpected Jotform question label.`);
+    }
 
     const formAnswer = submittedFieldAnswer(labelField);
     const keyAnswer = normalizeFormValue(item[key]);
     if (comparable(formAnswer) !== comparable(keyAnswer)) {
       validationIssues.push(`${String(key)} does not match the submitted form answer.`);
     }
-    return [label, formAnswer] as const;
+    return [label, formAnswer];
   });
+
+  for (const field of fields) {
+    const label = field.text?.trim();
+    if (matchedFields.has(field) || !label || entries.some(([knownLabel]) => knownLabel === label)) continue;
+    entries.push([label, submittedFieldAnswer(field)]);
+  }
 
   return { answers: Object.fromEntries(entries), validationIssues };
 }

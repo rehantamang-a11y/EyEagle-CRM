@@ -34,7 +34,7 @@ const listOpportunity: JotformOpportunityListDto = {
     "11": { name: "q11_radio9", text: "Any immediate safety concern?", answer: "Yes" },
     "12": { name: "q12_textarea10", text: "Brief description of concern" },
     "14": { name: "q14_widget_TermsAndConditions12", text: "I agree to be contacted about this request.", answer: "Accepted" },
-    "21": { name: "whoAre", text: "Who are you considering EyEagle for?", answer: ["Myself"] },
+    "21": { name: "whoAre", text: "Who are you considering Eyeagle for?", answer: ["Myself"] },
     "22": { name: "whatIs", text: "What is your main safety concern?", answer: ["Bathroom slips or falls"] },
     "23": { name: "whatWould", text: "What would you like next?", answer: "Book a bathroom safety assessment" },
     "24": { name: "preferredTime", text: "Preferred time to contact", answer: "Tomorrow" },
@@ -81,7 +81,7 @@ test("maps opportunity list table values from formContext instead of flat detail
       "11": { name: "q11_radio9", text: "Any immediate safety concern?", answer: "Yes" },
       "12": { name: "q12_textarea10", text: "Brief description of concern", answer: "Kids using the bathroom." },
       "14": { name: "q14_widget_TermsAndConditions12", text: "I agree to be contacted about this request.", answer: "Accepted" },
-      "21": { name: "whoAre", text: "Who are you considering EyEagle for?", answer: ["General home safety"] },
+      "21": { name: "whoAre", text: "Who are you considering Eyeagle for?", answer: ["General home safety"] },
       "22": { name: "whatIs", text: "What is your main safety concern?", answer: ["Not sure, just exploring"] },
       "23": { name: "whatWould", text: "What would you like next?", answer: "Understand the EyEagle safety kit" },
       "24": { name: "preferredTime", text: "Preferred time to contact", answer: "This weekend" },
@@ -99,7 +99,7 @@ test("maps opportunity list table values from formContext instead of flat detail
   assert.equal(answers["Your Name"], "shubham meena");
   assert.equal(answers["Phone Number / Whatsapp No."], "(770) 407-1095");
   assert.equal(answers["Site name or location"], "Faridabad");
-  assert.deepEqual(answers["Who are you considering EyEagle for?"], ["General home safety"]);
+  assert.deepEqual(answers["Who are you considering Eyeagle for?"], ["General home safety"]);
   assert.deepEqual(answers["What is your main safety concern?"], ["Not sure, just exploring"]);
   assert.equal(answers["Any immediate safety concern?"], "Yes");
   assert.equal(answers["Brief description of concern"], "Kids using the bathroom.");
@@ -109,6 +109,36 @@ test("maps opportunity list table values from formContext instead of flat detail
   assert.equal(answers["I agree to be contacted about this request."], "Accepted");
   assert.ok(mapped.formValidationIssues?.some((issue) => issue.includes("customerName")));
   assert.ok(mapped.formValidationIssues?.some((issue) => issue.includes("interestedIn")));
+});
+
+test("preserves every supplied form answer when a Jotform question label changes", async () => {
+  const { mapOpportunityListDto } = await servicePromise;
+  const mapped = mapOpportunityListDto({
+    ...listOpportunity,
+    consideringFor: "Senior parent living in the same home",
+    preferredTiming: null,
+    contactConsent: "true",
+    formContext: {
+      ...listOpportunity.formContext,
+      "21": {
+        order: 4,
+        name: "whoAre",
+        text: "Who are you considering EyEagle for?",
+        answer: ["Senior parent living in the same home"],
+      },
+      "25": { order: 10, name: "timings", text: "Timings", answer: "" },
+      "26": { order: 11, name: "accessNeeds", text: "Any access needs?", answer: "Step-free entrance" },
+    },
+  });
+
+  assert.deepEqual(
+    mapped.formAnswers["Who are you considering Eyeagle for?"],
+    ["Senior parent living in the same home"],
+  );
+  assert.equal(mapped.formAnswers.Timings, "Not answered");
+  assert.equal(mapped.formAnswers["I agree to be contacted about this request."], "Accepted");
+  assert.equal(mapped.formAnswers["Any access needs?"], "Step-free entrance");
+  assert.ok(mapped.formValidationIssues?.some((issue) => issue.startsWith("consideringFor ")));
 });
 
 test("uses nested prettyFormat fallback and flags a populated flat key when the form answer is missing", async () => {
@@ -161,7 +191,7 @@ test("maps named opportunity-detail fields back to their Jotform questions", asy
   assert.equal(answers["Your Name"], "Akasmat Pradhan");
   assert.equal(answers["Phone Number / Whatsapp No."], "(856) 406-1724");
   assert.equal(answers["Site name or location"], "Khatima / Delhi / Odisha - will confirm location shortly");
-  assert.equal(answers["Who are you considering EyEagle for?"], "Senior parent / grandparent living away, Someone recovering from illness or surgery");
+  assert.equal(answers["Who are you considering Eyeagle for?"], "Senior parent / grandparent living away, Someone recovering from illness or surgery");
   assert.equal(answers["What is your main safety concern?"], "No");
   assert.equal(answers["Any immediate safety concern?"], "Not answered");
   assert.equal(answers["Brief description of concern"], "Not answered");
@@ -171,6 +201,18 @@ test("maps named opportunity-detail fields back to their Jotform questions", asy
   assert.equal(answers["I agree to be contacted about this request."], "Not answered");
   assert.equal(mapped.ownerUserId, "872771631951840242");
   assert.equal(mapped.ownerName, "Akshat S");
+});
+
+test("keeps flat consent and additional submitted questions in opportunity details", async () => {
+  const { mapOpportunityDetailDto } = await servicePromise;
+  const mapped = mapOpportunityDetailDto({
+    ...opportunity,
+    contactConsent: true,
+    formSubmission: [{ question: "Any access needs?", answer: "Step-free entrance" }],
+  });
+
+  assert.equal(mapped.formAnswers["I agree to be contacted about this request."], "true");
+  assert.equal(mapped.formAnswers["Any access needs?"], "Step-free entrance");
 });
 
 test("rejects an unsafe numeric opportunity id before it can be used in a mutation", async () => {
@@ -372,7 +414,7 @@ test("fetches and maps one opportunity's authoritative details", async () => {
     assert.equal(result.formAnswers["Your Name"], "Akasmat Pradhan");
     assert.equal(result.formAnswers["Phone Number / Whatsapp No."], "+91 98100 00000");
     assert.equal(result.formAnswers["Site name or location"], "Noida");
-    assert.equal(result.formAnswers["Who are you considering EyEagle for?"], "Myself");
+    assert.equal(result.formAnswers["Who are you considering Eyeagle for?"], "Myself");
     assert.equal(result.formAnswers["Brief description of concern"], "Bathroom safety assessment");
     assert.equal(result.formAnswers["What is your main safety concern?"], "Bathroom slips or falls");
     assert.equal(result.formAnswers["Any immediate safety concern?"], "No");

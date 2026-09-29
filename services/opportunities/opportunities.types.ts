@@ -44,7 +44,7 @@ export type OpportunityQuestionFieldsDto = {
 
 export type OpportunityFormFieldDto = {
   name?: string;
-  order?: string;
+  order?: string | number;
   text?: string;
   type?: string;
   answer?: unknown;
