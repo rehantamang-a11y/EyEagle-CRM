@@ -31,14 +31,15 @@ export type Opportunity = {
 export type OpportunityQuestionFieldsDto = {
   customerName: string | null;
   phone: string | null;
+  email: string | null;
   location: string | null;
-  consideringFor: string | string[] | null;
-  safetyConcern: string | string[] | null;
-  immediateConcern: string | null;
-  description: string | null;
-  interestedIn: string | null;
-  preferredDay: string | null;
-  preferredTiming: string | null;
+  consideringFor?: string | string[] | null;
+  safetyConcern?: string | string[] | null;
+  immediateConcern?: string | null;
+  description?: string | null;
+  interestedIn?: string | string[] | null;
+  preferredDay?: string | null;
+  preferredTiming?: string | null;
   contactConsent?: string | boolean | null;
 };
 
@@ -60,7 +61,6 @@ export type JotformOpportunityListDto = OpportunityQuestionFieldsDto & {
   id: string;
   status: string;
   owner: OpportunityOwnerDto | null;
-  email: string | null;
   submittedAt: string;
   source: string | null;
   action?: string | null;
@@ -85,7 +85,6 @@ export type EmbeddedOpportunityActivityDto = {
 export type OpportunityDetailDto = OpportunityQuestionFieldsDto & {
   id: string;
   status?: string | null;
-  email: string | null;
   source: string | null;
   submittedAt: string;
   owner: OpportunityOwnerDto | null;

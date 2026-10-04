@@ -53,6 +53,14 @@ function backendOpportunityId(opportunityId: string): string {
   return encodeURIComponent(opportunityId);
 }
 
+function normalizedQuestionValue(value: string | string[] | null | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    const answer = value.filter(Boolean).join(", ");
+    return answer || undefined;
+  }
+  return value || undefined;
+}
+
 export function mapOpportunityDetailDto(item: OpportunityDetailDto): Opportunity {
   const formAnswers = mapOpportunityDetailFormAnswers(item);
   const embeddedStatus = item.activityHistory?.[0]?.opportunityStatus;
@@ -67,8 +75,8 @@ export function mapOpportunityDetailDto(item: OpportunityDetailDto): Opportunity
     fullName: item.customerName || formValue("customerName") || "Unnamed enquiry",
     phone: item.phone || formValue("phone") || "Phone not provided",
     email: item.email,
-    location: item.location,
-    interest: item.interestedIn || formValue("interestedIn") || null,
+    location: item.location || formValue("location") || null,
+    interest: normalizedQuestionValue(item.interestedIn) || formValue("interestedIn") || null,
     summary: item.description || formValue("description") || null,
     formAnswers,
     submittedAt: item.submittedAt,
@@ -77,20 +85,23 @@ export function mapOpportunityDetailDto(item: OpportunityDetailDto): Opportunity
 }
 
 export function mapOpportunityListDto(item: JotformOpportunityListDto): Opportunity {
-  const { answers: formAnswers, validationIssues } = mapOpportunityListFormData(item);
+  const { answers: formAnswers, validationIssues, mappedKeys } = mapOpportunityListFormData(item);
   const formValue = (key: Parameters<typeof getAnsweredFormValue>[1]) => getAnsweredFormValue(formAnswers, key);
+  const flatFallback = (key: Parameters<typeof getAnsweredFormValue>[1]) => mappedKeys.has(key)
+    ? undefined
+    : normalizedQuestionValue(item[key] as string | string[] | null | undefined);
 
   return {
     id: normalizeOpportunityId(item.id),
     status: normalizeOpportunityStatus(item.status),
     ownerUserId: item.owner?.id == null ? null : String(item.owner.id),
     ownerName: item.owner?.name || null,
-    fullName: formValue("customerName") || "Unnamed enquiry",
-    phone: formValue("phone") || "Phone not provided",
+    fullName: formValue("customerName") || flatFallback("customerName") || "Unnamed enquiry",
+    phone: formValue("phone") || flatFallback("phone") || "Phone not provided",
     email: item.email,
-    location: formValue("location") || null,
-    interest: formValue("interestedIn") || null,
-    summary: formValue("description") || null,
+    location: formValue("location") || flatFallback("location") || null,
+    interest: formValue("interestedIn") || flatFallback("interestedIn") || null,
+    summary: formValue("description") || flatFallback("description") || null,
     formAnswers,
     formValidationIssues: validationIssues,
     submittedAt: item.submittedAt,
