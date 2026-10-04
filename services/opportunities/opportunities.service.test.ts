@@ -187,9 +187,10 @@ test("maps named opportunity-detail fields back to their Jotform questions", asy
   });
   const answers = mapped.formAnswers;
 
-  assert.equal(Object.keys(answers).length, 11);
+  assert.equal(Object.keys(answers).length, 12);
   assert.equal(answers["Your Name"], "Akasmat Pradhan");
   assert.equal(answers["Phone Number / Whatsapp No."], "(856) 406-1724");
+  assert.equal(answers["Email address"], "Not answered");
   assert.equal(answers["Site name or location"], "Khatima / Delhi / Odisha - will confirm location shortly");
   assert.equal(answers["Who are you considering Eyeagle for?"], "Senior parent / grandparent living away, Someone recovering from illness or surgery");
   assert.equal(answers["What is your main safety concern?"], "No");
@@ -213,6 +214,39 @@ test("keeps flat consent and additional submitted questions in opportunity detai
 
   assert.equal(mapped.formAnswers["I agree to be contacted about this request."], "true");
   assert.equal(mapped.formAnswers["Any access needs?"], "Step-free entrance");
+});
+
+test("uses the supplied detail form answers and classifies email as contact data", async () => {
+  const { mapOpportunityDetailDto } = await servicePromise;
+  const mapped = mapOpportunityDetailDto({
+    id: "892712051865768696",
+    customerName: "TestDev",
+    phone: "+91 8800863288",
+    email: "adev@gmail.com",
+    location: "Delhi",
+    source: "WEBSITE",
+    submittedAt: "2026-09-29T15:28:58.951726",
+    consideringFor: "General home safety",
+    safetyConcern: "Bathroom slips or falls",
+    immediateConcern: "Yes",
+    interestedIn: "Book a bathroom safety assessment",
+    preferredDay: "Tomorrow",
+    preferredTiming: null,
+    description: null,
+    owner: null,
+    formSubmission: [
+      { question: "Your Name", answer: "TestDev" },
+      { question: "What is your main safety concern?", answer: ["Bathroom slips or falls"] },
+      { question: "I agree to be contacted about this request.", answer: true },
+      { question: "Email address", answer: "adev@gmail.com" },
+    ],
+    activityHistory: [],
+  });
+
+  assert.equal(mapped.id, "892712051865768696");
+  assert.deepEqual(mapped.formAnswers["What is your main safety concern?"], ["Bathroom slips or falls"]);
+  assert.equal(mapped.formAnswers["I agree to be contacted about this request."], "true");
+  assert.equal(mapped.formAnswers["Email address"], "adev@gmail.com");
 });
 
 test("rejects an unsafe numeric opportunity id before it can be used in a mutation", async () => {
@@ -410,13 +444,14 @@ test("fetches and maps one opportunity's authoritative details", async () => {
     assert.equal(result.status, "OPEN");
     assert.equal(result.ownerName, "Akshat S");
     assert.equal(result.source, "Jotform");
-    assert.equal(Object.keys(result.formAnswers).length, 11);
+    assert.equal(Object.keys(result.formAnswers).length, 12);
     assert.equal(result.formAnswers["Your Name"], "Akasmat Pradhan");
     assert.equal(result.formAnswers["Phone Number / Whatsapp No."], "+91 98100 00000");
+    assert.equal(result.formAnswers["Email address"], "Not answered");
     assert.equal(result.formAnswers["Site name or location"], "Noida");
     assert.equal(result.formAnswers["Who are you considering Eyeagle for?"], "Myself");
     assert.equal(result.formAnswers["Brief description of concern"], "Bathroom safety assessment");
-    assert.equal(result.formAnswers["What is your main safety concern?"], "Bathroom slips or falls");
+    assert.deepEqual(result.formAnswers["What is your main safety concern?"], ["Conflicting formSubmission value"]);
     assert.equal(result.formAnswers["Any immediate safety concern?"], "No");
     assert.equal(result.formAnswers["What would you like next?"], "Understand the EyEagle safety kit");
     assert.equal(result.formAnswers["Preferred time to contact"], "This weekend");

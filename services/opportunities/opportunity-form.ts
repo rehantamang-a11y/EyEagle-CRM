@@ -5,6 +5,7 @@ export const NOT_ANSWERED = "Not answered";
 export const OPPORTUNITY_FORM_FIELDS = [
   { key: "customerName", formName: "q2_textbox0", label: "Your Name", section: "contact" },
   { key: "phone", formName: "q4_phone2", label: "Phone Number / Whatsapp No.", section: "contact" },
+  { key: "email", formName: "email", label: "Email address", section: "contact" },
   { key: "location", formName: "q10_textbox8", label: "Site name or location", section: "contact" },
   { key: "consideringFor", formName: "whoAre", label: "Who are you considering Eyeagle for?", section: "response" },
   { key: "safetyConcern", formName: "whatIs", label: "What is your main safety concern?", section: "response" },
@@ -38,16 +39,12 @@ function normalizeFormValue(value: unknown): string | string[] {
 
 export function mapOpportunityDetailFormAnswers(item: OpportunityDetailDto): Record<string, string | string[]> {
   const answers = Object.fromEntries(OPPORTUNITY_FORM_FIELDS.map(({ key, label }) => [label, normalizeFormValue(item[key])]));
-  const consentField = OPPORTUNITY_FORM_FIELDS.find(({ key }) => key === "contactConsent");
-  const consentSubmission = item.formSubmission?.find(
-    ({ question }) => question?.trim().toLocaleLowerCase() === consentField?.label.toLocaleLowerCase(),
-  );
-  if (consentField && consentSubmission) answers[consentField.label] = normalizeFormValue(consentSubmission.answer);
-
-  const knownLabels = new Set<string>(OPPORTUNITY_FORM_FIELDS.map(({ label }) => label.toLocaleLowerCase()));
+  const knownLabels = new Map(OPPORTUNITY_FORM_FIELDS.map((field) => [field.label.toLocaleLowerCase(), field.label]));
   for (const submission of item.formSubmission || []) {
     const question = submission.question?.trim();
-    if (question && !knownLabels.has(question.toLocaleLowerCase())) answers[question] = normalizeFormValue(submission.answer);
+    if (!question) continue;
+    const canonicalLabel = knownLabels.get(question.toLocaleLowerCase());
+    answers[canonicalLabel || question] = normalizeFormValue(submission.answer);
   }
   return answers;
 }
@@ -64,15 +61,20 @@ function submittedFieldAnswer(field?: { answer?: unknown; prettyFormat?: string 
 export function mapOpportunityListFormData(item: JotformOpportunityListDto): {
   answers: Record<string, string | string[]>;
   validationIssues: string[];
+  mappedKeys: Set<OpportunityFormKey>;
 } {
   const formSource = item.formData && Object.keys(item.formData).length ? item.formData : item.formContext;
   const fields = Object.values(formSource || {});
   const validationIssues: string[] = [];
   const matchedFields = new Set<OpportunityFormFieldDto>();
+  const mappedKeys = new Set<OpportunityFormKey>();
   const entries: Array<[string, string | string[]]> = OPPORTUNITY_FORM_FIELDS.map(({ key, formName, label }) => {
     const nameField = fields.find((candidate) => candidate.name === formName);
     const labelField = nameField || fields.find((candidate) => candidate.text?.trim() === label);
-    if (labelField) matchedFields.add(labelField);
+    if (labelField) {
+      matchedFields.add(labelField);
+      mappedKeys.add(key);
+    }
     if (labelField && !nameField) validationIssues.push(`${String(key)} used an unexpected Jotform field name.`);
     if (nameField && nameField.text?.trim() !== label) {
       validationIssues.push(`${String(key)} used an unexpected Jotform question label.`);
@@ -92,7 +94,7 @@ export function mapOpportunityListFormData(item: JotformOpportunityListDto): {
     entries.push([label, submittedFieldAnswer(field)]);
   }
 
-  return { answers: Object.fromEntries(entries), validationIssues };
+  return { answers: Object.fromEntries(entries), validationIssues, mappedKeys };
 }
 
 export function emptyOpportunityFormAnswers(): Record<string, string | string[]> {
