@@ -46,7 +46,13 @@ const formatAge = (value: string) => {
   return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 };
 const initials = (value?: string | null) => (value || "Unnamed enquiry").split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "?";
-const formValue = (item: Opportunity, key: OpportunityFormKey) => getAnsweredFormValue(item.formAnswers, key) || "—";
+const answeredFormValue = (item: Opportunity, key: OpportunityFormKey) => getAnsweredFormValue(item.formAnswers, key);
+const formValue = (item: Opportunity, key: OpportunityFormKey) => answeredFormValue(item, key) || "—";
+const intakeDetails = (item: Opportunity) => item.summary || answeredFormValue(item, "description") || answeredFormValue(item, "safetyConcern") || "—";
+const intakeDetailsContext = (item: Opportunity) => item.summary || answeredFormValue(item, "description")
+  ? undefined
+  : answeredFormValue(item, "consideringFor");
+const preferredContactTime = (item: Opportunity) => answeredFormValue(item, "preferredTiming") || answeredFormValue(item, "preferredDay") || "—";
 
 const statusLabel = (item: Opportunity) => opportunityStatusLabel(item.status);
 
@@ -200,15 +206,14 @@ export function CrmPage({ view }: { view: CrmView }) {
       <div className={loading || Boolean(error) ? "hidden" : ""}>
         <div className="queue-list">
           <div className={`queue-head ${isNew ? "intake-grid" : "minimal-grid"}`}>
-            {isNew ? <><span>Customer</span><span>Interested in</span><span>Considering for</span><span>Main concern</span><span>Preferred callback</span><span>Submitted</span><span /></> : <><span>{view === "all-sales" ? "Customer / owner" : "Customer"}</span><span>Sales next action</span><span>Last update</span><span>Status</span><span /></>}
+            {isNew ? <><span>Customer</span><span>Help needed</span><span>Enquiry details</span><span>Preferred time</span><span>Submitted</span><span /></> : <><span>{view === "all-sales" ? "Customer / owner" : "Customer"}</span><span>Sales next action</span><span>Last update</span><span>Status</span><span /></>}
           </div>
           {rows.map((item) => <div className={`queue-row ${isNew ? "intake-grid" : "minimal-grid"}`} key={item.id}>
             <button className="customer-cell" onClick={() => openDetail(item)}><span className="customer-avatar">{initials(item.fullName)}</span><span><strong>{item.fullName || "Unnamed enquiry"}</strong>{isNew && <small>{item.location || "Location not provided"} · {formatIndianPhone(item.phone)}</small>}{view === "all-sales" && <em className="owner-inline">Owner · {item.ownerName || "Unknown"}</em>}</span></button>
             {isNew ? <>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, "interestedIn")}</strong></button>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, "consideringFor")}</strong></button>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, "safetyConcern")}</strong></button>
-              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{formValue(item, "preferredDay")}</strong><small>{formValue(item, "preferredTiming")}</small></button>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{intakeDetails(item)}</strong>{intakeDetailsContext(item) && <small>{intakeDetailsContext(item)}</small>}</button>
+              <button className="minimal-context" onClick={() => openDetail(item)}><strong>{preferredContactTime(item)}</strong></button>
               <span className="minimal-meta">{formatAge(item.submittedAt)}</span>
               <div className="row-action"><Button size="sm" onClick={() => void claim(item)} disabled={busy}>Take ownership</Button></div>
             </> : <>

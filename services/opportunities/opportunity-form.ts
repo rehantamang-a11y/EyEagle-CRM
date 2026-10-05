@@ -2,6 +2,13 @@ import type { JotformOpportunityListDto, OpportunityDetailDto, OpportunityFormFi
 
 export const NOT_ANSWERED = "Not answered";
 
+type OpportunityFormField = {
+  key: keyof OpportunityQuestionFieldsDto;
+  formName: string;
+  label: string;
+  section: "contact" | "response";
+};
+
 export const OPPORTUNITY_FORM_FIELDS = [
   { key: "customerName", formName: "q2_textbox0", label: "Your Name", section: "contact" },
   { key: "phone", formName: "q4_phone2", label: "Phone Number / Whatsapp No.", section: "contact" },
@@ -15,17 +22,39 @@ export const OPPORTUNITY_FORM_FIELDS = [
   { key: "preferredDay", formName: "preferredTime", label: "Preferred time to contact", section: "response" },
   { key: "preferredTiming", formName: "timings", label: "Timings", section: "response" },
   { key: "contactConsent", formName: "q14_widget_TermsAndConditions12", label: "I agree to be contacted about this request.", section: "response" },
-] as const satisfies ReadonlyArray<{
-  key: keyof OpportunityQuestionFieldsDto;
-  formName: string;
-  label: string;
-  section: "contact" | "response";
-}>;
+] as const satisfies ReadonlyArray<OpportunityFormField>;
 
-export type OpportunityFormKey = (typeof OPPORTUNITY_FORM_FIELDS)[number]["key"];
-export const OPPORTUNITY_CONTACT_LABELS = OPPORTUNITY_FORM_FIELDS
+export const NEW_OPPORTUNITY_FORM_FIELDS = [
+  { key: "customerName", formName: "q2_textbox0", label: "Your Name", section: "contact" },
+  { key: "phone", formName: "q4_phone2", label: "Phone Number / WhatsApp No.", section: "contact" },
+  { key: "email", formName: "email", label: "Email address", section: "contact" },
+  { key: "location", formName: "q10_textbox8", label: "City or location", section: "contact" },
+  { key: "description", formName: "q12_textarea10", label: "Tell us more about your enquiry", section: "response" },
+  { key: "interestedIn", formName: "whatWould", label: "What can we help with?", section: "response" },
+  { key: "preferredTiming", formName: "timings", label: "Preferred time", section: "response" },
+  { key: "contactConsent", formName: "q14_widget_TermsAndConditions12", label: "I agree to be contacted about this request.", section: "response" },
+] as const satisfies ReadonlyArray<OpportunityFormField>;
+
+const ALL_OPPORTUNITY_FORM_FIELDS: ReadonlyArray<OpportunityFormField> = [
+  ...NEW_OPPORTUNITY_FORM_FIELDS,
+  ...OPPORTUNITY_FORM_FIELDS,
+];
+const NEW_FORM_LABELS = new Set(NEW_OPPORTUNITY_FORM_FIELDS
+  .filter(({ label }) => !OPPORTUNITY_FORM_FIELDS.some(
+    (legacy) => legacy.label.toLocaleLowerCase() === label.toLocaleLowerCase(),
+  ))
+  .map(({ label }) => label.toLocaleLowerCase()));
+
+export type OpportunityFormKey = (typeof OPPORTUNITY_FORM_FIELDS)[number]["key"] | (typeof NEW_OPPORTUNITY_FORM_FIELDS)[number]["key"];
+export const OPPORTUNITY_CONTACT_LABELS = [...new Set(ALL_OPPORTUNITY_FORM_FIELDS
   .filter(({ section }) => section === "contact")
-  .map(({ label }) => label);
+  .map(({ label }) => label))];
+
+function registryForLabels(labels: Array<string | null | undefined>): ReadonlyArray<OpportunityFormField> {
+  return labels.some((label) => label && NEW_FORM_LABELS.has(label.trim().toLocaleLowerCase()))
+    ? NEW_OPPORTUNITY_FORM_FIELDS
+    : OPPORTUNITY_FORM_FIELDS;
+}
 
 function normalizeFormValue(value: unknown): string | string[] {
   if (Array.isArray(value)) {
@@ -38,8 +67,9 @@ function normalizeFormValue(value: unknown): string | string[] {
 }
 
 export function mapOpportunityDetailFormAnswers(item: OpportunityDetailDto): Record<string, string | string[]> {
-  const answers = Object.fromEntries(OPPORTUNITY_FORM_FIELDS.map(({ key, label }) => [label, normalizeFormValue(item[key])]));
-  const knownLabels = new Map(OPPORTUNITY_FORM_FIELDS.map((field) => [field.label.toLocaleLowerCase(), field.label]));
+  const registry = registryForLabels((item.formSubmission || []).map(({ question }) => question));
+  const answers = Object.fromEntries(registry.map(({ key, label }) => [label, normalizeFormValue(item[key])]));
+  const knownLabels = new Map(registry.map((field) => [field.label.toLocaleLowerCase(), field.label]));
   for (const submission of item.formSubmission || []) {
     const question = submission.question?.trim();
     if (!question) continue;
@@ -65,10 +95,11 @@ export function mapOpportunityListFormData(item: JotformOpportunityListDto): {
 } {
   const formSource = item.formData && Object.keys(item.formData).length ? item.formData : item.formContext;
   const fields = Object.values(formSource || {});
+  const registry = registryForLabels(fields.map(({ text }) => text));
   const validationIssues: string[] = [];
   const matchedFields = new Set<OpportunityFormFieldDto>();
   const mappedKeys = new Set<OpportunityFormKey>();
-  const entries: Array<[string, string | string[]]> = OPPORTUNITY_FORM_FIELDS.map(({ key, formName, label }) => {
+  const entries: Array<[string, string | string[]]> = registry.map(({ key, formName, label }) => {
     const nameField = fields.find((candidate) => candidate.name === formName);
     const labelField = nameField || fields.find((candidate) => candidate.text?.trim() === label);
     if (labelField) {
@@ -102,9 +133,10 @@ export function emptyOpportunityFormAnswers(): Record<string, string | string[]>
 }
 
 export function getAnsweredFormValue(answers: Record<string, string | string[]>, key: OpportunityFormKey): string | undefined {
-  const label = OPPORTUNITY_FORM_FIELDS.find((field) => field.key === key)?.label;
-  if (!label) return undefined;
-  const value = answers[label];
-  const normalized = Array.isArray(value) ? value.join(", ") : value;
-  return normalized && normalized !== NOT_ANSWERED ? normalized : undefined;
+  for (const { label } of ALL_OPPORTUNITY_FORM_FIELDS.filter((field) => field.key === key)) {
+    const value = answers[label];
+    const normalized = Array.isArray(value) ? value.join(", ") : value;
+    if (normalized && normalized !== NOT_ANSWERED) return normalized;
+  }
+  return undefined;
 }

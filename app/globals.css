@@ -130,7 +130,7 @@ button { cursor: pointer; }
 .queue-head { height: 40px; background: var(--app-table-header-bg); color: var(--muted); text-transform: uppercase; letter-spacing: .065em; font-size: 10px; font-weight: 700; }
 .queue-row { min-height: 92px; border-top: 1px solid var(--app-table-border); }
 .queue-row:hover { background: var(--app-table-row-hover); }
-.intake-grid { min-width: 1050px; grid-template-columns: minmax(205px, 1.05fr) minmax(250px, 1.3fr) 190px 90px 175px 80px; }
+.intake-grid { min-width: 1050px; grid-template-columns: minmax(205px, 1.05fr) minmax(230px, 1.15fr) minmax(250px, 1.3fr) 145px 90px 132px; }
 .customer-cell { min-width: 0; display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
 .customer-avatar { width: 34px; height: 34px; font-size: 10px; }
 .customer-cell > span:last-child { min-width: 0; }
@@ -189,7 +189,7 @@ button { cursor: pointer; }
 .simple-filters button { height: 30px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 500; }
 .simple-filters button.active { background: var(--brand-soft); color: var(--brand); }
 .minimal-grid { min-width: 850px; grid-template-columns: minmax(210px,1.1fr) minmax(210px,1fr) 130px 116px 132px; }
-.minimal-desk .intake-grid { min-width: 1260px; grid-template-columns: minmax(195px,1.05fr) minmax(150px,.85fr) minmax(135px,.72fr) minmax(190px,1fr) 145px 90px 132px; }
+.minimal-desk .intake-grid { min-width: 1120px; grid-template-columns: minmax(195px,1.05fr) minmax(210px,1fr) minmax(250px,1.2fr) 145px 90px 132px; }
 .minimal-desk .intake-grid .minimal-context strong { font-size: 12px; white-space: normal; line-height: 1.35; }
 .minimal-context { min-width: 0; padding: 0; border: 0; background: transparent; color: var(--text); text-align: left; }
 .minimal-context strong, .minimal-context small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
