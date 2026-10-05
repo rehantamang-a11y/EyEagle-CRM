@@ -249,6 +249,84 @@ test("uses the supplied detail form answers and classifies email as contact data
   assert.equal(mapped.formAnswers["Email address"], "adev@gmail.com");
 });
 
+test("maps the reduced form without rendering removed legacy questions", async () => {
+  const { mapOpportunityDetailDto } = await servicePromise;
+  const { NEW_OPPORTUNITY_FORM_FIELDS } = await import("./opportunity-form");
+  const mapped = mapOpportunityDetailDto({
+    id: "894818427093717740",
+    customerName: "Test Customer",
+    phone: "+91 9876543211",
+    email: "test@example.com",
+    location: "Bengaluru",
+    source: "WEBSITE",
+    submittedAt: "2026-10-05T10:58:57.854635",
+    consideringFor: null,
+    safetyConcern: null,
+    immediateConcern: null,
+    interestedIn: "EyEagle home system, Pricing, installation or availability",
+    preferredDay: null,
+    preferredTiming: "Morning",
+    description: "Please share pricing and installation details.",
+    owner: null,
+    formSubmission: [
+      { question: "Your Name", answer: "Test Customer" },
+      { question: "Phone Number / WhatsApp No.", answer: "+91 9876543211" },
+      { question: "City or location", answer: "Bengaluru" },
+      { question: "Tell us more about your enquiry", answer: "Please share pricing and installation details." },
+      { question: "What can we help with?", answer: ["EyEagle home system", "Pricing, installation or availability"] },
+      { question: "Preferred time", answer: "Morning" },
+      { question: "I agree to be contacted about this request.", answer: true },
+      { question: "Email address", answer: "test@example.com" },
+    ],
+    activityHistory: [],
+  });
+
+  assert.deepEqual(Object.keys(mapped.formAnswers), NEW_OPPORTUNITY_FORM_FIELDS.map(({ label }) => label));
+  assert.deepEqual(mapped.formAnswers["What can we help with?"], [
+    "EyEagle home system",
+    "Pricing, installation or availability",
+  ]);
+  assert.equal(mapped.formAnswers["Preferred time"], "Morning");
+  assert.equal(mapped.formAnswers["Who are you considering Eyeagle for?"], undefined);
+  assert.equal(mapped.interest, "EyEagle home system, Pricing, installation or availability");
+  assert.equal(mapped.summary, "Please share pricing and installation details.");
+});
+
+test("maps a reduced-form list item by its submitted labels while retaining flat fallbacks", async () => {
+  const { mapOpportunityListDto } = await servicePromise;
+  const mapped = mapOpportunityListDto({
+    id: "894818427093717740",
+    status: "UNCLAIMED",
+    owner: null,
+    customerName: "Test Customer",
+    phone: "+91 9876543211",
+    email: "test@example.com",
+    location: "Bengaluru",
+    interestedIn: "EyEagle home system, Pricing, installation or availability",
+    preferredTiming: "Morning",
+    description: "Please share pricing and installation details.",
+    submittedAt: "2026-10-05T10:58:57.854635Z",
+    source: "WEBSITE",
+    formContext: {
+      "1": { name: "name", text: "Your Name", answer: "Test Customer" },
+      "2": { name: "phone", text: "Phone Number / WhatsApp No.", answer: "+91 9876543211" },
+      "3": { name: "city", text: "City or location", answer: "Bengaluru" },
+      "4": { name: "details", text: "Tell us more about your enquiry", answer: "Please share pricing and installation details." },
+      "5": { name: "help", text: "What can we help with?", answer: ["EyEagle home system", "Pricing, installation or availability"] },
+      "6": { name: "preferred", text: "Preferred time", answer: "Morning" },
+      "7": { name: "consent", text: "I agree to be contacted about this request.", answer: true },
+      "8": { name: "email", text: "Email address", answer: "test@example.com" },
+    },
+  });
+
+  assert.equal(mapped.fullName, "Test Customer");
+  assert.equal(mapped.location, "Bengaluru");
+  assert.equal(mapped.interest, "EyEagle home system, Pricing, installation or availability");
+  assert.equal(mapped.summary, "Please share pricing and installation details.");
+  assert.equal(mapped.formAnswers["Preferred time"], "Morning");
+  assert.equal(mapped.formAnswers["What is your main safety concern?"], undefined);
+});
+
 test("rejects an unsafe numeric opportunity id before it can be used in a mutation", async () => {
   const { mapOpportunityDetailDto } = await servicePromise;
   assert.throws(
