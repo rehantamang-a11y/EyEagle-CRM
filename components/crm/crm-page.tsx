@@ -17,7 +17,7 @@ import { useUnclaimedOpportunities } from "@/hooks/opportunities/use-unclaimed-o
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { crmListHref, parseSalesFilter, SALES_FILTERS, type CrmView } from "@/lib/crm-routes";
 import { formatIndianPhone } from "@/lib/format-phone";
-import { formatSubmissionDateIst, submissionDateKeyIst } from "@/lib/format-submission-date";
+import { formatSubmissionDateUtc, submissionDateKeyIst } from "@/lib/format-submission-date";
 import { getAnsweredFormValue, type OpportunityFormKey } from "@/services/opportunities/opportunity-form";
 import { sortOpportunitiesLatestFirst } from "@/services/opportunities/opportunity-sort";
 import { isOpportunityClosed, opportunityStatusLabel } from "@/services/opportunities/opportunity-status";
@@ -238,8 +238,8 @@ export function CrmPage({ view }: { view: CrmView }) {
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, "interestedIn")}</strong></button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{intakeDetails(item)}</strong>{intakeDetailsContext(item) && <small>{intakeDetailsContext(item)}</small>}</button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{preferredContactTime(item)}</strong></button>
-              <time className="minimal-meta" dateTime={item.submittedAt}>{formatSubmissionDateIst(item.submittedAt)}</time>
-              <time className="minimal-meta" dateTime={item.updatedAt || undefined}>{formatSubmissionDateIst(item.updatedAt)}</time>
+              <time className="minimal-meta" dateTime={item.submittedAt}>{formatSubmissionDateUtc(item.submittedAt)}</time>
+              <time className="minimal-meta" dateTime={item.updatedAt || undefined}>{formatSubmissionDateUtc(item.updatedAt)}</time>
               <div className="row-action"><Button size="sm" onClick={() => void claim(item)} disabled={busy}>Take ownership</Button></div>
             </> : <>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.nextActionLabel || statusLabel(item)}</strong><small>{item.nextActionAt ? formatDate(item.nextActionAt) : "Ready now"}</small></button>
