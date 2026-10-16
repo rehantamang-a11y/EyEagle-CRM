@@ -21,6 +21,7 @@ export type Opportunity = {
   formAnswers: Record<string, string | string[]>;
   formValidationIssues?: string[];
   submittedAt: string;
+  updatedAt?: string | null;
   source?: string | null;
   nextActionAt?: string | null;
   nextActionLabel?: string | null;
@@ -62,6 +63,7 @@ export type JotformOpportunityListDto = OpportunityQuestionFieldsDto & {
   status: string;
   owner: OpportunityOwnerDto | null;
   submittedAt: string;
+  updatedAt?: string | null;
   source: string | null;
   action?: string | null;
   formContext: Record<string, OpportunityFormFieldDto>;

@@ -27,6 +27,7 @@ const listOpportunity: JotformOpportunityListDto = {
   ...opportunity,
   status: "UNCLAIMED",
   action: "Take ownership",
+  updatedAt: "2026-08-18T16:12:45.123456Z",
   formContext: {
     "2": { name: "q2_textbox0", text: "Your Name", answer: "Mr. Pankaj Malik" },
     "4": { name: "q4_phone2", text: "Phone Number / Whatsapp No.", answer: { full: "(981) 106-8697" } },
@@ -96,6 +97,7 @@ test("maps opportunity list table values from formContext instead of flat detail
   assert.equal(mapped.location, "Faridabad");
   assert.equal(mapped.interest, "Understand the EyEagle safety kit");
   assert.equal(mapped.summary, "Kids using the bathroom.");
+  assert.equal(mapped.updatedAt, "2026-08-18T16:12:45.123456Z");
   assert.equal(answers["Your Name"], "shubham meena");
   assert.equal(answers["Phone Number / Whatsapp No."], "(770) 407-1095");
   assert.equal(answers["Site name or location"], "Faridabad");

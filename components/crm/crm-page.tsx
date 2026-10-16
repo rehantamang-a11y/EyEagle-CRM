@@ -17,6 +17,7 @@ import { useUnclaimedOpportunities } from "@/hooks/opportunities/use-unclaimed-o
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { crmListHref, parseSalesFilter, SALES_FILTERS, type CrmView } from "@/lib/crm-routes";
 import { formatIndianPhone } from "@/lib/format-phone";
+import { formatSubmissionDateIst, submissionDateKeyIst } from "@/lib/format-submission-date";
 import { getAnsweredFormValue, type OpportunityFormKey } from "@/services/opportunities/opportunity-form";
 import { sortOpportunitiesLatestFirst } from "@/services/opportunities/opportunity-sort";
 import { isOpportunityClosed, opportunityStatusLabel } from "@/services/opportunities/opportunity-status";
@@ -29,6 +30,7 @@ const titles: Record<CrmView, { title: string; description: string }> = {
 };
 
 const filterLabels = { ALL: "All", DUE: "Due", FOLLOW_UPS: "Follow-ups", CLOSED: "Closed" } as const;
+const PAGE_SIZE = 10;
 const localDateTime = () => {
   const date = new Date(Date.now() + 86_400_000);
   date.setHours(11, 0, 0, 0);
@@ -39,18 +41,6 @@ const backendLocalDateTime = (value: string) => value.length === 16 ? `${value}:
 const formatDate = (value?: string | null) => value
   ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(value))
   : "—";
-const formatSubmissionDate = (value?: string | null) => {
-  if (!value) return "Time not provided";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Time not provided";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-};
 const initials = (value?: string | null) => (value || "Unnamed enquiry").split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "?";
 const answeredFormValue = (item: Opportunity, key: OpportunityFormKey) => getAnsweredFormValue(item.formAnswers, key);
 const formValue = (item: Opportunity, key: OpportunityFormKey) => answeredFormValue(item, key) || "—";
@@ -71,6 +61,9 @@ export function CrmPage({ view }: { view: CrmView }) {
   const rawFilter = searchParams.get("filter");
   const filter = parseSalesFilter(rawFilter);
   const [searchDraft, setSearchDraft] = useState(urlSearch);
+  const [submittedFrom, setSubmittedFrom] = useState("");
+  const [submittedTo, setSubmittedTo] = useState("");
+  const [page, setPage] = useState(1);
   const [actionTarget, setActionTarget] = useState<Opportunity | null>(null);
   const [actionType, setActionType] = useState<OpportunityActionOutcome>("FOLLOW_UP");
   const [note, setNote] = useState("");
@@ -123,15 +116,33 @@ export function CrmPage({ view }: { view: CrmView }) {
   const sourceRows = isNew ? (unclaimedQuery.data || []) : isMyWork ? (myWorkQuery.data || []) : (salesQuery.data || []);
   const rows = useMemo(() => {
     if (isNew) {
-      return sortOpportunitiesLatestFirst(sourceRows.filter((item) => [item.fullName, item.phone, item.location, item.interest, item.summary]
-        .filter(Boolean).join(" ").toLowerCase().includes(urlSearch.toLowerCase())), "submittedAt");
+      return sortOpportunitiesLatestFirst(sourceRows.filter((item) => {
+        const searchMatch = [item.fullName, item.phone, item.location, item.interest, item.summary]
+          .filter(Boolean).join(" ").toLowerCase().includes(urlSearch.toLowerCase());
+        const submittedDate = submissionDateKeyIst(item.submittedAt);
+        const fromMatch = !submittedFrom || Boolean(submittedDate && submittedDate >= submittedFrom);
+        const toMatch = !submittedTo || Boolean(submittedDate && submittedDate <= submittedTo);
+        return searchMatch && fromMatch && toMatch;
+      }), "submittedAt");
     }
     if (!isMyWork) return sortOpportunitiesLatestFirst(sourceRows, "lastActionAt");
     const search = urlSearch.toLowerCase();
     return sortOpportunitiesLatestFirst(sourceRows.filter((item) => (filter === "ALL" || item.workGroup === filter)
       && [item.fullName, item.nextActionLabel, statusLabel(item)]
         .filter(Boolean).join(" ").toLowerCase().includes(search)), "lastActionAt");
-  }, [filter, isMyWork, isNew, sourceRows, urlSearch]);
+  }, [filter, isMyWork, isNew, sourceRows, submittedFrom, submittedTo, urlSearch]);
+
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const visibleRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, isMyWork, isNew, submittedFrom, submittedTo, urlSearch]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   const flash = (message: string) => {
     setToast(message);
@@ -202,7 +213,14 @@ export function CrmPage({ view }: { view: CrmView }) {
         {!isNew
           ? <div className="simple-filters">{SALES_FILTERS.map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{filterLabels[value]}</button>)}</div>
           : <span className="queue-scope">{unclaimedQuery.data?.length || 0} waiting for ownership</span>}
-        <label className="desk-search"><Search size={14} /><span className="sr-only">Search {heading.title.toLowerCase()}</span><Input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={`Search ${heading.title.toLowerCase()}`} /></label>
+        <div className="queue-toolbar-controls">
+          {isNew && <div className="date-filters" aria-label="Filter by submission date">
+            <label>From<Input type="date" value={submittedFrom} max={submittedTo || undefined} onChange={(event) => setSubmittedFrom(event.target.value)} /></label>
+            <label>To<Input type="date" value={submittedTo} min={submittedFrom || undefined} onChange={(event) => setSubmittedTo(event.target.value)} /></label>
+            {(submittedFrom || submittedTo) && <Button variant="ghost" size="sm" onClick={() => { setSubmittedFrom(""); setSubmittedTo(""); }}>Clear dates</Button>}
+          </div>}
+          <label className="desk-search"><Search size={14} /><span className="sr-only">Search {heading.title.toLowerCase()}</span><Input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={`Search ${heading.title.toLowerCase()}`} /></label>
+        </div>
       </div>
 
       {isSearchDebouncing && <div className="desk-empty"><Clock3 size={27} /><strong>Waiting for your search</strong></div>}
@@ -212,15 +230,16 @@ export function CrmPage({ view }: { view: CrmView }) {
       <div className={loading || Boolean(error) ? "hidden" : ""}>
         <div className="queue-list">
           <div className={`queue-head ${isNew ? "intake-grid" : "minimal-grid"}`}>
-            {isNew ? <><span>Customer</span><span>Help needed</span><span>Enquiry details</span><span>Preferred time</span><span>Submitted</span><span /></> : <><span>{view === "all-sales" ? "Customer / owner" : "Customer"}</span><span>Sales next action</span><span>Last update</span><span>Status</span><span /></>}
+            {isNew ? <><span>Customer</span><span>Help needed</span><span>Enquiry details</span><span>Preferred time</span><span>Submitted</span><span>Updated</span><span>Action</span></> : <><span>{view === "all-sales" ? "Customer / owner" : "Customer"}</span><span>Sales next action</span><span>Last update</span><span>Status</span><span /></>}
           </div>
-          {rows.map((item) => <div className={`queue-row ${isNew ? "intake-grid" : "minimal-grid"}`} key={item.id}>
+          {visibleRows.map((item) => <div className={`queue-row ${isNew ? "intake-grid" : "minimal-grid"}`} key={item.id}>
             <button className="customer-cell" onClick={() => openDetail(item)}><span className="customer-avatar">{initials(item.fullName)}</span><span><strong>{item.fullName || "Unnamed enquiry"}</strong>{isNew && <small>{item.location || "Location not provided"} · {formatIndianPhone(item.phone)}</small>}{view === "all-sales" && <em className="owner-inline">Owner · {item.ownerName || "Unknown"}</em>}</span></button>
             {isNew ? <>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, "interestedIn")}</strong></button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{intakeDetails(item)}</strong>{intakeDetailsContext(item) && <small>{intakeDetailsContext(item)}</small>}</button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{preferredContactTime(item)}</strong></button>
-              <span className="minimal-meta" title={item.submittedAt}>{formatSubmissionDate(item.submittedAt)}</span>
+              <time className="minimal-meta" dateTime={item.submittedAt}>{formatSubmissionDateIst(item.submittedAt)}</time>
+              <time className="minimal-meta" dateTime={item.updatedAt || undefined}>{formatSubmissionDateIst(item.updatedAt)}</time>
               <div className="row-action"><Button size="sm" onClick={() => void claim(item)} disabled={busy}>Take ownership</Button></div>
             </> : <>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.nextActionLabel || statusLabel(item)}</strong><small>{item.nextActionAt ? formatDate(item.nextActionAt) : "Ready now"}</small></button>
@@ -235,6 +254,10 @@ export function CrmPage({ view }: { view: CrmView }) {
           </div>)}
           {!rows.length && <div className="desk-empty"><CheckCircle2 size={27} /><strong>{urlSearch ? "No matching opportunities" : isNew ? "No new enquiries" : "Nothing here right now"}</strong>{(urlSearch || isNew) && <span>{urlSearch ? `No results for “${urlSearch}”.` : "Refresh Jotform when you are ready."}</span>}</div>}
         </div>
+        {rows.length > PAGE_SIZE && <nav className="queue-pagination" aria-label="Opportunity pages">
+          <span>Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, rows.length)} of {rows.length}</span>
+          <div><Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>Previous</Button><strong>Page {currentPage} of {pageCount}</strong><Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={currentPage === pageCount}>Next</Button></div>
+        </nav>}
       </div>
     </section>
 
