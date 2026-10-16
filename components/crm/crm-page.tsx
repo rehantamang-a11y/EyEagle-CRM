@@ -39,11 +39,17 @@ const backendLocalDateTime = (value: string) => value.length === 16 ? `${value}:
 const formatDate = (value?: string | null) => value
   ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(value))
   : "—";
-const formatAge = (value: string) => {
-  const timestamp = new Date(value).getTime();
-  if (!value || Number.isNaN(timestamp)) return "Time not provided";
-  const hours = Math.max(0, Math.round((Date.now() - timestamp) / 3_600_000));
-  return hours < 1 ? "Just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+const formatSubmissionDate = (value?: string | null) => {
+  if (!value) return "Time not provided";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time not provided";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 };
 const initials = (value?: string | null) => (value || "Unnamed enquiry").split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "?";
 const answeredFormValue = (item: Opportunity, key: OpportunityFormKey) => getAnsweredFormValue(item.formAnswers, key);
@@ -214,7 +220,7 @@ export function CrmPage({ view }: { view: CrmView }) {
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.interest || formValue(item, "interestedIn")}</strong></button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{intakeDetails(item)}</strong>{intakeDetailsContext(item) && <small>{intakeDetailsContext(item)}</small>}</button>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{preferredContactTime(item)}</strong></button>
-              <span className="minimal-meta">{formatAge(item.submittedAt)}</span>
+              <span className="minimal-meta" title={item.submittedAt}>{formatSubmissionDate(item.submittedAt)}</span>
               <div className="row-action"><Button size="sm" onClick={() => void claim(item)} disabled={busy}>Take ownership</Button></div>
             </> : <>
               <button className="minimal-context" onClick={() => openDetail(item)}><strong>{item.nextActionLabel || statusLabel(item)}</strong><small>{item.nextActionAt ? formatDate(item.nextActionAt) : "Ready now"}</small></button>
