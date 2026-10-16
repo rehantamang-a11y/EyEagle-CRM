@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, FileText, Inbox, Users, X } from "lucide-react";
+import { ClipboardList, Inbox, Users, X } from "lucide-react";
 import { SessionSummary } from "@/components/auth/session-summary";
 import { withBasePath } from "@/lib/app-path";
 
@@ -28,7 +28,6 @@ export function CrmSidebar({ mobileOpen = false, onNavigate }: { mobileOpen?: bo
       </Link>)}
     </nav>
     <div className="sidebar-footer">
-      <div className="sidebar-source"><FileText size={16} /><div><strong>Jotform intake</strong><small>Manual refresh only</small></div></div>
       <SessionSummary />
     </div>
   </aside>;

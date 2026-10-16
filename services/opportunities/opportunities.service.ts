@@ -105,6 +105,7 @@ export function mapOpportunityListDto(item: JotformOpportunityListDto): Opportun
     formAnswers,
     formValidationIssues: validationIssues,
     submittedAt: item.submittedAt,
+    updatedAt: item.updatedAt || null,
     source: item.source,
   };
 }
