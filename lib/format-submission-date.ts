@@ -19,7 +19,7 @@ export function submissionDateKeyIst(value?: string | null): string | null {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-export function formatSubmissionDateIst(value?: string | null): string {
+export function formatSubmissionDateUtc(value?: string | null): string {
   if (!value) return "Time not provided";
   const date = parseBackendTimestamp(value);
   if (Number.isNaN(date.getTime())) return "Time not provided";
@@ -31,7 +31,9 @@ export function formatSubmissionDateIst(value?: string | null): string {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-    timeZone: "Asia/Kolkata",
-    timeZoneName: "short",
+    timeZone: "UTC",
   }).format(date);
 }
+
+/** @deprecated Use formatSubmissionDateUtc for opportunity list timestamps. */
+export const formatSubmissionDateIst = formatSubmissionDateUtc;
