@@ -14,6 +14,7 @@ export function useTakeOwnership() {
         queryClient.refetchQueries({ queryKey: opportunityKeys.list("unclaimed"), type: "active" }),
         queryClient.invalidateQueries({ queryKey: opportunityKeys.myWork() }),
         queryClient.invalidateQueries({ queryKey: opportunityKeys.salesLists() }),
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.dashboard() }),
       ]);
     },
   });

@@ -10,7 +10,11 @@ export function useSyncJotform() {
   return useMutation({
     mutationFn: opportunitiesService.syncJotform,
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: opportunityKeys.list("unclaimed"), type: "active" });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.list("unclaimed") }),
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.salesLists() }),
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.dashboard() }),
+      ]);
     },
   });
 }

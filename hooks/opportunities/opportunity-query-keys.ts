@@ -1,5 +1,6 @@
 export const opportunityKeys = {
   all: ["opportunities"] as const,
+  dashboard: () => [...opportunityKeys.all, "dashboard"] as const,
   list: (view: string) => [...opportunityKeys.all, "list", view] as const,
   myWork: () => [...opportunityKeys.all, "list", "my-work"] as const,
   salesLists: () => [...opportunityKeys.all, "sales-list"] as const,

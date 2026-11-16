@@ -453,6 +453,39 @@ test("passes every sales tab enum to the backend", async () => {
   }
 });
 
+test("requests every reported page for dashboard totals and rejects repeated pages", async () => {
+  const originalFetch = globalThis.fetch;
+  const { opportunitiesService } = await servicePromise;
+  const requested: string[] = [];
+  let repeatFirstPage = false;
+
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    requested.push(url);
+    const page = url.endsWith("page=1") && !repeatFirstPage ? 1 : 0;
+    const data = url.includes("all-sales") ? {
+      content: [{ id: String(page + 1), customer: "Test lead", owner: null, status: "OPEN" }],
+      page: { number: page, totalPages: 2, totalElements: 2 },
+    } : [listOpportunity];
+    return Response.json({ data });
+  }) as typeof fetch;
+
+  try {
+    const result = await opportunitiesService.listDashboardOpportunities();
+    assert.deepEqual(result.sales.map(({ id }) => id), ["1", "2"]);
+    assert.equal(result.intake.length, 1);
+    assert.deepEqual(requested, [
+      "/sales/api/backend/crm/opportunities/all-sales?filter=ALL",
+      "/sales/api/backend/crm/opportunities?view=unclaimed",
+      "/sales/api/backend/crm/opportunities/all-sales?filter=ALL&page=1",
+    ]);
+    repeatFirstPage = true;
+    await assert.rejects(opportunitiesService.listDashboardOpportunities(), /incomplete opportunity list/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("searches the shared sales table across supported fields with exact URI encoding", async () => {
   const originalFetch = globalThis.fetch;
   const { setApiAccessToken } = await import("../api/client");

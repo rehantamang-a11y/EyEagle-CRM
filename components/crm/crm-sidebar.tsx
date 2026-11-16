@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, Inbox, Users, X } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, ClipboardList, Inbox, Users, X } from "lucide-react";
 import { SessionSummary } from "@/components/auth/session-summary";
 import { withBasePath } from "@/lib/app-path";
 
 const links = [
+  { href: "/dashboard", label: "Dashboard", icon: ChartNoAxesColumnIncreasing },
   { href: "/new-enquiries", label: "New enquiries", icon: Inbox },
   { href: "/my-work?filter=ALL", path: "/my-work", label: "My work", icon: ClipboardList },
   { href: "/all-sales?filter=ALL", path: "/all-sales", label: "All sales", icon: Users },

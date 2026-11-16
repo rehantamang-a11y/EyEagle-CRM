@@ -19,6 +19,7 @@ export function useSaveOpportunityAction() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: opportunityKeys.myWork() }),
         queryClient.invalidateQueries({ queryKey: opportunityKeys.salesLists() }),
+        queryClient.invalidateQueries({ queryKey: opportunityKeys.dashboard() }),
         queryClient.invalidateQueries({ queryKey: opportunityKeys.actionHistory(variables.opportunityId) }),
       ]);
     },
