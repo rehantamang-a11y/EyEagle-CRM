@@ -132,11 +132,16 @@ export function emptyOpportunityFormAnswers(): Record<string, string | string[]>
   return Object.fromEntries(OPPORTUNITY_FORM_FIELDS.map(({ label }) => [label, NOT_ANSWERED]));
 }
 
-export function getAnsweredFormValue(answers: Record<string, string | string[]>, key: OpportunityFormKey): string | undefined {
+export function getSubmittedFormValue(answers: Record<string, string | string[]>, key: OpportunityFormKey) {
   for (const { label } of ALL_OPPORTUNITY_FORM_FIELDS.filter((field) => field.key === key)) {
     const value = answers[label];
     const normalized = Array.isArray(value) ? value.join(", ") : value;
-    if (normalized && normalized !== NOT_ANSWERED) return normalized;
+    if (normalized && normalized !== NOT_ANSWERED) return value;
   }
   return undefined;
+}
+
+export function getAnsweredFormValue(answers: Record<string, string | string[]>, key: OpportunityFormKey): string | undefined {
+  const value = getSubmittedFormValue(answers, key);
+  return Array.isArray(value) ? value.join(", ") : value;
 }

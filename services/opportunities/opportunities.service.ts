@@ -12,6 +12,46 @@ type ListEnvelope<T> = T[] | {
   history?: T[];
 };
 
+type PageMetadata = { number?: number; totalPages?: number; totalElements?: number; last?: boolean };
+type PageEnvelope<T> = {
+  data?: (PageMetadata & { page?: PageMetadata }) | T[];
+  page?: PageMetadata;
+} & PageMetadata;
+
+const unclaimedPath = "/crm/opportunities?view=unclaimed";
+const allSalesPath = "/crm/opportunities/all-sales";
+
+function pageMetadata<T>(payload: ListEnvelope<T>): PageMetadata {
+  if (Array.isArray(payload)) return {};
+  const page = payload as PageEnvelope<T>;
+  const data = Array.isArray(page.data) ? undefined : page.data;
+  return [data?.page, data, page.page, page].find(
+    (entry) => entry?.totalPages !== undefined || entry?.totalElements !== undefined || entry?.last !== undefined,
+  ) ?? {};
+}
+
+async function requestDashboardList<T extends { id: string }>(path: string, signal?: AbortSignal) {
+  const first = await apiRequest<ListEnvelope<T>>(path, { signal });
+  const rows = [...normalizeList(first)];
+  const { number = 0, totalPages = 1, totalElements, last } = pageMetadata(first);
+  const incomplete = "The CRM returned an incomplete opportunity list. Refresh to try again.";
+  if (number !== 0 || !Number.isSafeInteger(totalPages) || totalPages < 0 || (last === false && totalPages < 2)) {
+    throw new Error(incomplete);
+  }
+  for (let index = 1; index < totalPages; index++) {
+    const payload = await apiRequest<ListEnvelope<T>>(`${path}&page=${index}`, { signal });
+    const returnedPage = pageMetadata(payload).number;
+    const batch = normalizeList(payload);
+    if ((returnedPage !== undefined && returnedPage !== index) || batch.length === 0) throw new Error(incomplete);
+    rows.push(...batch);
+  }
+  if ((totalElements !== undefined && rows.length !== totalElements) ||
+      (totalPages > 1 && new Set(rows.map(({ id }) => String(id))).size !== rows.length)) {
+    throw new Error(incomplete);
+  }
+  return rows;
+}
+
 function normalizeList<T>(payload: ListEnvelope<T>): T[] {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload.data)) return payload.data;
@@ -175,7 +215,7 @@ export function mapOpportunityActionHistoryDto(item: OpportunityActionHistoryDto
 
 export const opportunitiesService = {
   async listUnclaimed() {
-    const payload = await apiRequest<OpportunityListEnvelope>("/crm/opportunities?view=unclaimed");
+    const payload = await apiRequest<OpportunityListEnvelope>(unclaimedPath);
     return normalizeOpportunityList(payload).map(mapOpportunityListDto);
   },
   async listMyWork() {
@@ -184,9 +224,16 @@ export const opportunitiesService = {
   },
   async listSales(filter: SalesOpportunityFilter = "ALL", search = "") {
     const query = search.trim();
-    const path = `/crm/opportunities/all-sales?filter=${filter}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
+    const path = `${allSalesPath}?filter=${filter}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
     const payload = await apiRequest<AllSalesOpportunityListEnvelope>(path);
     return normalizeList(payload).map(mapAllSalesOpportunityDto);
+  },
+  async listDashboardOpportunities(signal?: AbortSignal) {
+    const [sales, intake] = await Promise.all([
+      requestDashboardList<AllSalesOpportunityDto>(`${allSalesPath}?filter=ALL`, signal),
+      requestDashboardList<JotformOpportunityListDto>(unclaimedPath, signal),
+    ]);
+    return { sales: sales.map(mapAllSalesOpportunityDto), intake: intake.map(mapOpportunityListDto) };
   },
   async getOpportunity(opportunityId: string) {
     const payload = await apiRequest<OpportunityDetailEnvelope>(
