@@ -116,7 +116,6 @@ function ScheduledActions({ overdue, actions, view }: { overdue?: boolean; actio
 function TeamOverview({ snapshot }: { snapshot: ReturnType<typeof buildSalesDashboard> }) {
   return <>
       <div className={styles.overview}>
-        <div><h2>Pipeline overview</h2><p>All-time CRM opportunities. Repeat enquiries can belong to the same customer.</p></div>
         <Link className={styles.textLink} href={crmListHref("all-sales")}>Open all sales <ArrowRight size={14} /></Link>
       </div>
       <div className={styles.metrics}>
